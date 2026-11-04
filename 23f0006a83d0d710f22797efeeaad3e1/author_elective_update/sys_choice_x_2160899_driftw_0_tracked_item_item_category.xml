@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_choice action="INSERT_OR_UPDATE" field="item_category" table="x_2160899_driftw_0_tracked_item" version="3">
+        <sys_choice_set action="INSERT_OR_UPDATE">
+            <element>item_category</element>
+            <name>x_2160899_driftw_0_tracked_item</name>
+            <sys_class_name>sys_choice_set</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-04 14:16:46</sys_created_on>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>item_category</sys_name>
+            <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+            <sys_update_name>sys_choice_x_2160899_driftw_0_tracked_item_item_category</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-04 14:16:46</sys_updated_on>
+        </sys_choice_set>
+        <sys_choice action="INSERT_OR_UPDATE">
+            <dependent_value/>
+            <element>item_category</element>
+            <hint/>
+            <inactive>false</inactive>
+            <label>Plugins</label>
+            <language>en</language>
+            <name>x_2160899_driftw_0_tracked_item</name>
+            <sequence>10</sequence>
+            <synonyms/>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-04 14:16:46</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-04 14:16:46</sys_updated_on>
+            <value>plugins</value>
+        </sys_choice>
+        <sys_choice action="INSERT_OR_UPDATE">
+            <dependent_value/>
+            <element>item_category</element>
+            <hint/>
+            <inactive>false</inactive>
+            <label>Applications</label>
+            <language>en</language>
+            <name>x_2160899_driftw_0_tracked_item</name>
+            <sequence>20</sequence>
+            <synonyms/>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-04 14:16:46</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-04 14:16:46</sys_updated_on>
+            <value>applications</value>
+        </sys_choice>
+        <sys_choice action="INSERT_OR_UPDATE">
+            <dependent_value/>
+            <element>item_category</element>
+            <hint/>
+            <inactive>false</inactive>
+            <label>MID Servers</label>
+            <language>en</language>
+            <name>x_2160899_driftw_0_tracked_item</name>
+            <sequence>30</sequence>
+            <synonyms/>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-04 14:16:46</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-04 14:16:46</sys_updated_on>
+            <value>mid_servers</value>
+        </sys_choice>
+        <sys_choice action="INSERT_OR_UPDATE">
+            <dependent_value/>
+            <element>item_category</element>
+            <hint/>
+            <inactive>false</inactive>
+            <label>System Properties</label>
+            <language>en</language>
+            <name>x_2160899_driftw_0_tracked_item</name>
+            <sequence>40</sequence>
+            <synonyms/>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-04 14:16:46</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-04 14:16:46</sys_updated_on>
+            <value>system_properties</value>
+        </sys_choice>
+        <sys_choice action="INSERT_OR_UPDATE">
+            <dependent_value/>
+            <element>item_category</element>
+            <hint/>
+            <inactive>false</inactive>
+            <label>Clone Preservers</label>
+            <language>en</language>
+            <name>x_2160899_driftw_0_tracked_item</name>
+            <sequence>50</sequence>
+            <synonyms/>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-04 14:16:46</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-04 14:16:46</sys_updated_on>
+            <value>clone_preservers</value>
+        </sys_choice>
+        <sys_choice action="INSERT_OR_UPDATE">
+            <dependent_value/>
+            <element>item_category</element>
+            <hint/>
+            <inactive>false</inactive>
+            <label>Clone Exclusions</label>
+            <language>en</language>
+            <name>x_2160899_driftw_0_tracked_item</name>
+            <sequence>60</sequence>
+            <synonyms/>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-04 14:16:46</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-04 14:16:46</sys_updated_on>
+            <value>clone_exclusions</value>
+        </sys_choice>
+        <sys_choice action="INSERT_OR_UPDATE">
+            <dependent_value/>
+            <element>item_category</element>
+            <hint/>
+            <inactive>false</inactive>
+            <label>Tables</label>
+            <language>en</language>
+            <name>x_2160899_driftw_0_tracked_item</name>
+            <sequence>70</sequence>
+            <synonyms/>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-04 15:57:52</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-04 15:57:52</sys_updated_on>
+            <value>tables</value>
+        </sys_choice>
+    </sys_choice>
+</record_update>

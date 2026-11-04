@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_wizard_answer">
+    <sys_wizard_answer action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <answer>SN Instance</answer>
+        <button_label/>
+        <dependent_value/>
+        <element/>
+        <name>SN Instance</name>
+        <next_question/>
+        <order>100</order>
+        <payload_name/>
+        <question display_value="Base Configuration Item" name="Base Configuration Item">7232de8b3cb3031054699bda642808e0</question>
+        <roles/>
+        <script/>
+        <sys_class_name>sys_wizard_answer</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:16:13</sys_created_on>
+        <sys_id>63c2082e83d0d710f22797efeeaad320</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>SN Instance</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_wizard_answer_63c2082e83d0d710f22797efeeaad320</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 14:16:13</sys_updated_on>
+        <table/>
+        <target_url>x_2160899_driftw_0_cmdb_ci_sn_instance.do</target_url>
+        <type>1</type>
+    </sys_wizard_answer>
+</record_update>

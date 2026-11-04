@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="enforce_dot_walk_cross_scope_access=true" db_object_id="981a58ea8394d710f22797efeeaad303" label="Tracked Table" max_length="40" name="x_2160899_driftw_0_sn_cmdb_table_config" type="collection">
+        <element display="true" label="Table name" max_length="80" name="table_name" type="string" unique="true"/>
+        <element label="Description" max_length="255" name="description" type="string"/>
+        <element default="true" label="Active" max_length="40" name="active" type="boolean"/>
+    </element>
+</database>

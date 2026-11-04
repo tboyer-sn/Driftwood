@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_user_role">
+    <sys_user_role action="INSERT_OR_UPDATE">
+        <assignable_by/>
+        <can_delegate>true</can_delegate>
+        <description>ConfigurationNOW: read secure value hashes</description>
+        <elevated_privilege>false</elevated_privilege>
+        <federated_id>7sgvocTCi5aJJPe51EAZouyo3qDan3BDx3B3N4YehgI=</federated_id>
+        <grantable>true</grantable>
+        <includes_roles/>
+        <name>x_2160899_driftw_0.configuration_read_secure</name>
+        <scoped_admin>false</scoped_admin>
+        <suffix>configuration_read_secure</suffix>
+        <sys_class_name>sys_user_role</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:16:11</sys_created_on>
+        <sys_id>c7c2c42e83d0d710f22797efeeaad372</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>x_2160899_driftw_0.configuration_read_secure</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_user_role_c7c2c42e83d0d710f22797efeeaad372</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 14:16:11</sys_updated_on>
+    </sys_user_role>
+</record_update>

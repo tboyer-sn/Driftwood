@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="enforce_dot_walk_cross_scope_access=true" db_object_id="9fc2c42e83d0d710f22797efeeaad3c0" extends="cmdb_ci_appl_now_app" label="SN Instance" max_length="40" name="x_2160899_driftw_0_cmdb_ci_sn_instance" type="collection">
+        <element label="Build name" max_length="255" name="build_name" type="string"/>
+        <element label="Build tag" max_length="255" name="build_tag" type="string"/>
+        <element label="Nodes" max_length="4000" name="nodes" type="string"/>
+        <element label="Instance name" max_length="100" name="instance_name" type="string" unique="true"/>
+        <element label="Collection summary" max_length="4000" name="collection_summary" type="string"/>
+        <element label="Instance ID" max_length="255" name="instance_id" type="string"/>
+        <element label="Timezone" max_length="255" name="timezone" type="string"/>
+        <element label="Instance URL" max_length="255" name="instance_url" type="string"/>
+        <element label="Family" max_length="255" name="family" type="string"/>
+        <element label="Production flag" max_length="40" name="production_flag" type="boolean"/>
+        <element label="Last collected" max_length="40" name="last_collected" type="glide_date_time"/>
+        <element choice="1" label="Collection status" max_length="40" name="collection_status" type="string">
+            <choice>
+                <element inactive_on_update="false" label="Running" sequence="10" value="running"/>
+                <element inactive_on_update="false" label="Completed" sequence="20" value="completed"/>
+                <element inactive_on_update="false" label="Completed with warnings" sequence="30" value="completed_with_warnings"/>
+            </choice>
+        </element>
+        <element label="Node count" max_length="40" name="node_count" type="integer"/>
+        <element label="Build date" max_length="255" name="build_date" type="string"/>
+        <element label="WAR" max_length="255" name="war" type="string"/>
+        <element label="Patch" max_length="255" name="patch" type="string"/>
+    </element>
+</database>

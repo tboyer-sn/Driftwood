@@ -1,0 +1,616 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_2160899_driftw_0.ConfigNowCollector</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description>Reads the current instance's configuration into a JSON snapshot (read-only).</description>
+        <mobile_callable>false</mobile_callable>
+        <name>ConfigNowCollector</name>
+        <sandbox_callable>false</sandbox_callable>
+        <script><![CDATA[/**
+ * Script Include: ConfigNowCollector
+ * Scope:          x_2160899_driftw_0  (ConfigurationNOW)
+ * Accessible from: This application scope only
+ *
+ * Reads the CURRENT instance's configuration and returns a plain JSON
+ * snapshot. It writes nothing – persistence is ConfigNowWriter's job – so the
+ * same code backs the background dry run, the REST API and the scheduled job.
+ *
+ * Usage:
+ *   var snap = new ConfigNowCollector().collect();
+ *   var snap = new ConfigNowCollector({ categories: ['plugins'] }).collect();
+ *
+ * Every source table and field is resolved defensively (isValid /
+ * isValidField) so a missing table or renamed field becomes a warning in the
+ * snapshot instead of an exception. That makes the warnings list itself a
+ * feasibility report for each instance/release.
+ */
+var ConfigNowCollector = Class.create();
+ConfigNowCollector.prototype = {
+
+    initialize: function (options) {
+        this.options = options || {};
+        this.config = this.options.config || ConfigNowConfig.get();
+        if (this.options.categories) this.config.categories = this.options.categories;
+        this.warnings = [];
+    },
+
+    /* ------------------------------------------------------------------ */
+    /* Public                                                              */
+    /* ------------------------------------------------------------------ */
+
+    collect: function () {
+        var t0 = new Date().getTime();
+        var snapshot = {
+            schema: 'configurationnow.snapshot/0.1',
+            collector_version: ConfigNowConfig.COLLECTOR_VERSION,
+            collector_scope: ConfigNowConfig.SCOPE, // lets comparisons ignore the app's own record
+            collected_at: String(new GlideDateTime().getValue()), // String(): global scope returns a Java string // UTC
+            instance: this._safe('instance', this.collectInstance, {}),
+            categories: {},
+            warnings: this.warnings
+        };
+
+        var cats = this.config.categories;
+        for (var i = 0; i < cats.length; i++) {
+            var cat = cats[i];
+            var fn = this.COLLECTORS[cat];
+            if (!fn) {
+                this._warn(cat, 'Unknown category – skipped');
+                continue;
+            }
+            var items = this._safe(cat, this[fn], []);
+            snapshot.categories[cat] = { count: items.length, items: items };
+        }
+        snapshot.duration_ms = new Date().getTime() - t0;
+        return snapshot;
+    },
+
+    COLLECTORS: {
+        plugins: 'collectPlugins',
+        applications: 'collectApplications',
+        mid_servers: 'collectMidServers',
+        system_properties: 'collectSystemProperties',
+        clone_preservers: 'collectClonePreservers',
+        clone_exclusions: 'collectCloneExclusions',
+        tables: 'collectTables'
+    },
+
+    /* ------------------------------------------------------------------ */
+    /* Instance basics                                                     */
+    /* ------------------------------------------------------------------ */
+
+    collectInstance: function () {
+        var war = this._prop('glide.war');
+        var inst = {
+            instance_name: this._prop('instance_name'),
+            instance_id: this._prop('instance_id'),
+            instance_url: this._prop('glide.servlet.uri'),
+            build_name: this._prop('glide.buildname'),
+            build_tag: this._prop('glide.buildtag'),
+            build_date: this._prop('glide.builddate'),
+            war: war,
+            family: this._parseFamily(war),
+            patch: this._parsePatch(war),
+            // NB: glide.installation.production is 'true' even on PDIs, so it
+            // is reported for information only. Use "environment" instead.
+            production_flag: this._prop('glide.installation.production') == 'true',
+            environment: this._environment(),
+            timezone: this._prop('glide.sys.default.tz') || 'not set (platform default)',
+            nodes: []
+        };
+
+        var nodes = this._rows('sys_cluster_state', {
+            fields: {
+                system_id: ['system_id'],
+                status: ['status'],
+                node_type: ['node_type'],
+                schedulers: ['schedulers'],
+                ready_to_failover: ['ready_to_failover']
+            },
+            optional: { node_type: true, schedulers: true, ready_to_failover: true },
+            orderBy: 'system_id',
+            label: 'instance.nodes'
+        });
+        for (var i = 0; i < nodes.length; i++) {
+            delete nodes[i].sys_id;
+            inst.nodes.push(nodes[i]);
+        }
+        inst.node_count = inst.nodes.length;
+        return inst;
+    },
+
+    /* ------------------------------------------------------------------ */
+    /* Categories                                                          */
+    /* ------------------------------------------------------------------ */
+
+    collectPlugins: function () {
+        var rows = this._rows('sys_plugins', {
+            fields: {
+                id: ['source', 'id'],
+                name: ['name'],
+                version: ['version'],
+                active: ['active']
+            },
+            // No value filter: "active" is a string choice in older releases
+            // ('active'/'inactive') and a boolean from Brazil ('1'/'0').
+            // Normalised below. Do NOT use v_plugin – it rebuilds a large
+            // cache on query (~17 s observed on a Brazil PDI).
+            orderBy: 'source',
+            label: 'plugins'
+        });
+        var items = [];
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            if (!r.id) continue;
+            var state = this._activeState(r.active);
+            if (state != 'active' && !this.config.includeInactivePlugins) continue;
+            items.push(this._item('plugins', r.id, r.name, '', r.version, state, {}, null, r.sys_id));
+        }
+        return items;
+    },
+
+    collectApplications: function () {
+        var items = [];
+        var sources = [
+            { table: 'sys_store_app', source: 'store', filters: { active: 'true' } },
+            { table: 'sys_app', source: 'custom', filters: null }
+        ];
+        for (var s = 0; s < sources.length; s++) {
+            var src = sources[s];
+            var rows = this._rows(src.table, {
+                fields: {
+                    scope: ['scope'],
+                    name: ['name'],
+                    version: ['version'],
+                    active: ['active'],
+                    vendor: ['vendor'],
+                    vendor_prefix: ['vendor_prefix']
+                },
+                optional: { vendor: true, vendor_prefix: true },
+                filters: src.filters,
+                orderBy: 'scope',
+                label: 'applications.' + src.source
+            });
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                if (!r.scope) continue;
+                var state = this._activeState(r.active);
+                items.push(this._item('applications', r.scope, r.name, '', r.version, state,
+                    { source: src.source },
+                    // vendor is unreliable across releases ('' vs 'ServiceNow' for the
+                    // same app), so it is reported but not hashed
+                    { vendor: r.vendor || r.vendor_prefix || '' }, r.sys_id));
+            }
+        }
+        return items;
+    },
+
+    collectMidServers: function () {
+        var rows = this._rows('ecc_agent', {
+            fields: {
+                name: ['name'],
+                version: ['version'],
+                status: ['status'],
+                validated: ['validated'],
+                host_name: ['host_name'],
+                ip_address: ['ip_address'],
+                last_refreshed: ['last_refreshed']
+            },
+            optional: { validated: true, host_name: true, ip_address: true, last_refreshed: true },
+            orderBy: 'name',
+            label: 'mid_servers'
+        });
+        var items = [];
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            if (!r.name) continue;
+            // status/last_refreshed are operational, not configuration: kept in
+            // "runtime" so they never trigger drift.
+            items.push(this._item('mid_servers', r.name, r.name, '', r.version, r.validated == 'true' ? 'validated' : (r.validated || ''),
+                { host_name: r.host_name, ip_address: r.ip_address },
+                { status: r.status, last_refreshed: r.last_refreshed }, r.sys_id));
+        }
+        return items;
+    },
+
+    collectSystemProperties: function () {
+        var names = this.config.trackedProperties || [];
+        var prefixes = this.config.trackedPropertyPrefixes || [];
+        if (!names.length && !prefixes.length) return [];
+
+        var q = [];
+        if (names.length) q.push('nameIN' + names.join(','));
+        for (var p = 0; p < prefixes.length; p++) q.push('nameSTARTSWITH' + prefixes[p]);
+
+        var rows = this._rows('sys_properties', {
+            fields: {
+                name: ['name'],
+                value: ['value'],
+                type: ['type'],
+                is_private: ['is_private'],
+                scope: ['sys_scope']
+            },
+            display: { scope: true },
+            encodedQuery: q.join('^OR'),
+            orderBy: 'name',
+            label: 'system_properties'
+        });
+
+        var items = [];
+        var seen = {};
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            seen[r.name] = true;
+            var secure = (r.type == 'password' || r.type == 'password2');
+            var value = r.value;
+            var hashOverride = null;
+            if (secure) {
+                hashOverride = this.config.secureValueMode == 'hash'
+                    ? this._hash(this.config.secureHashSalt + '|' + value) : '';
+                value = '********';
+            }
+            var item = this._item('system_properties', r.name, r.name, value, '', secure ? 'secure' : 'set',
+                { type: r.type, is_private: r.is_private == 'true', scope: r.scope }, null, r.sys_id);
+            if (secure) {
+                item.secure = true;
+                item.secure_value_hash = hashOverride;
+                item.hash = this._hash(item.hash + '|' + hashOverride);
+            }
+            items.push(item);
+        }
+        for (var n = 0; n < names.length; n++) {
+            if (!seen[names[n]]) {
+                items.push(this._item('system_properties', names[n], names[n], '', '', 'not_set', {}, null, ''));
+            }
+        }
+        return items;
+    },
+
+    collectClonePreservers: function () {
+        var rows = this._rows('clone_data_preserver', {
+            fields: {
+                name: ['name'],
+                table: ['table', 'table_name'],
+                condition: ['condition'],
+                active: ['active']
+            },
+            optional: { condition: true, active: true },
+            orderBy: 'name',
+            label: 'clone_preservers'
+        });
+        var items = [];
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var key = 'preserver:' + (r.name || r.table);
+            items.push(this._item('clone_preservers', key, r.name, r.condition, '',
+                r.active == 'false' ? 'inactive' : 'active',
+                { rule_type: 'preserver', table: r.table }, null, r.sys_id));
+        }
+        return items;
+    },
+
+    collectCloneExclusions: function () {
+        var rows = this._rows('clone_data_exclude', {
+            fields: {
+                table: ['table', 'table_name', 'name'],
+                active: ['active']
+            },
+            optional: { active: true },
+            orderBy: null,
+            label: 'clone_exclusions'
+        });
+        var items = [];
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            if (!r.table) continue;
+            items.push(this._item('clone_exclusions', 'exclude:' + r.table, r.table, '', '',
+                r.active == 'false' ? 'inactive' : 'active',
+                { rule_type: 'exclusion', table: r.table }, null, r.sys_id));
+        }
+        return items;
+    },
+
+    /**
+     * Table configuration drift: one item per tracked table with
+     *   attributes.total        – row count (includes rows of extending tables)
+     *   attributes.customer     – rows in the global package or an x_ app
+     *                             (metadata tables only; null otherwise)
+     *   attributes.column_count / parent / fingerprint – schema of the table's
+     *                             own columns (name:type:length, sorted)
+     *   runtime.columns         – the column list itself (for drill-in, not hashed)
+     * A tracked table that doesn't exist here is reported with state 'absent'.
+     */
+    collectTables: function () {
+        var list = this._tableList();
+        var items = [];
+        for (var i = 0; i < list.length; i++) {
+            var t = list[i];
+            var gr = new GlideRecord(t.name);
+            if (!gr.isValid()) {
+                items.push(this._item('tables', t.name, t.name, '', '', 'absent', { source: t.source }, {}, ''));
+                continue;
+            }
+            try {
+                var total = this._count(t.name, '');
+                var customer = null;
+                if (gr.isValidField('sys_package') && gr.isValidField('sys_scope')) customer = this._count(t.name, this.config.customerQuery);
+                var schema = this._schema(t.name);
+                var colStr = schema.columns.join(',');
+                var attrs = {
+                    source: t.source,
+                    total: total,
+                    customer: customer,
+                    column_count: schema.columns.length,
+                    parent: schema.parent,
+                    fingerprint: this._hash(schema.parent + '|' + colStr).substring(0, 16)
+                };
+                var rt = { columns: colStr.length > 3900 ? colStr.substring(0, 3900) : colStr };
+                if (colStr.length > 3900) rt.columns_truncated = true;
+                items.push(this._item('tables', t.name, schema.label || t.name, '', '', 'present', attrs, rt, schema.sys_id));
+            } catch (e) {
+                this._warn('tables', t.name + ': ' + (e && e.message ? e.message : e));
+            }
+        }
+        return items;
+    },
+
+    _tableList: function () {
+        var seen = {}, out = [], i, n;
+        var add = function (name, source) {
+            if (!name) return;
+            if (seen[name]) { if (source == 'manual') seen[name].source = 'manual'; return; }
+            seen[name] = { name: name, source: source };
+            out.push(seen[name]);
+        };
+        var cur = this.config.curatedTables || [];
+        for (i = 0; i < cur.length; i++) add(cur[i], 'curated');
+
+        var dbChk = new GlideRecord('sys_db_object');
+        if (this.config.autoCustomTables && dbChk.isValid()) {
+            var own = ConfigNowConfig.SCOPE + '_';
+            var db = new GlideRecord('sys_db_object');
+            db.addEncodedQuery('nameSTARTSWITHx_^ORnameSTARTSWITHu_');
+            db.orderBy('name');
+            db.setLimit(this.config.maxAutoTables + 1);
+            db.query();
+            n = 0;
+            while (db.next()) {
+                var nm = db.getValue('name');
+                if (nm.indexOf(own) == 0) continue;
+                var skip = false, ex = this.config.autoExcludePrefixes || [];
+                for (var xp = 0; xp < ex.length; xp++) if (nm.indexOf(ex[xp]) == 0) skip = true;
+                if (skip) continue;
+                if (db.isValidField('scriptable_table') && db.getValue('scriptable_table') == '1') continue; // remote table
+                if (++n > this.config.maxAutoTables) { this._warn('tables', 'More than ' + this.config.maxAutoTables + ' custom tables – the rest were skipped'); break; }
+                add(nm, 'custom');
+            }
+        }
+
+        var excluded = {};
+        var tc = new GlideRecord(this.config.tables.tableConfig);
+        if (tc.isValid()) {
+            tc.query();
+            while (tc.next()) {
+                var tn = String(tc.getValue('table_name') || '').replace(/^\s+|\s+$/g, '');
+                if (!tn) continue;
+                if (tc.getValue('active') == '1' || tc.getValue('active') == 'true') add(tn, 'manual');
+                else excluded[tn] = true;
+            }
+        }
+        var res = [];
+        for (i = 0; i < out.length; i++) if (!excluded[out[i].name]) res.push(out[i]);
+        res.sort(function (a, b) { return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0); });
+        return res;
+    },
+
+    _count: function (table, encodedQuery) {
+        var ga = new GlideAggregate(table);
+        if (encodedQuery) ga.addEncodedQuery(encodedQuery);
+        ga.addAggregate('COUNT');
+        ga.query();
+        return ga.next() ? parseInt(ga.getAggregate('COUNT'), 10) : 0;
+    },
+
+    _schema: function (table) {
+        var res = { sys_id: '', label: '', parent: '', columns: [] };
+        var o = new GlideRecord('sys_db_object');
+        o.addQuery('name', table);
+        o.setLimit(1);
+        o.query();
+        if (o.next()) {
+            res.sys_id = o.getUniqueValue();
+            res.label = o.getValue('label') || '';
+            res.parent = o.super_class && !o.super_class.nil() ? String(o.super_class.getRefRecord().getValue('name') || '') : '';
+        }
+        var d = new GlideRecord('sys_dictionary');
+        d.addQuery('name', table);
+        d.addQuery('element', '!=', '');
+        d.query();
+        while (d.next()) {
+            var el = d.getValue('element');
+            if (!el) continue;
+            res.columns.push(el + ':' + (d.getValue('internal_type') || '') + ':' + (d.getValue('max_length') || ''));
+        }
+        res.columns.sort();
+        return res;
+    },
+
+    /* ------------------------------------------------------------------ */
+    /* Helpers                                                             */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Builds one normalised tracked item. `hash` covers everything that counts
+     * as configuration (key, value, version, state, attributes) and is what
+     * drift detection will compare later. `runtime` is reported but not hashed.
+     */
+    _item: function (category, key, name, value, version, state, attributes, runtime, sourceSysId) {
+        value = value == null ? '' : String(value);
+        var item = {
+            category: category,
+            key: String(key),
+            name: name || String(key),
+            value: value,
+            version: version || '',
+            state: state || '',
+            attributes: attributes || {},
+            runtime: runtime || {},
+            source_sys_id: sourceSysId || ''
+        };
+        item.hash = this._hash([item.key, value, item.version, item.state,
+            this._canon(item.attributes)].join('|'));
+        if (value.length > this.config.maxValueLength) {
+            item.value = value.substring(0, this.config.maxValueLength);
+            item.value_truncated = true;
+        }
+        return item;
+    },
+
+    /**
+     * Defensive GlideRecord reader.
+     * spec.fields   { outName: [candidateField, ...] } – first valid wins
+     * spec.display  { outName: true } – use getDisplayValue
+     * spec.optional { outName: true } – no warning if the field is missing
+     * spec.filters  { field: value } – applied only if the field exists
+     * spec.encodedQuery, spec.orderBy, spec.label
+     */
+    _rows: function (table, spec) {
+        var label = spec.label || table;
+        var gr = new GlideRecord(table);
+        if (!gr.isValid()) {
+            this._warn(label, 'Table ' + table + ' not found or not readable from this scope');
+            return [];
+        }
+        var resolved = {};
+        for (var out in spec.fields) {
+            var cands = spec.fields[out];
+            for (var c = 0; c < cands.length; c++) {
+                if (gr.isValidField(cands[c])) { resolved[out] = cands[c]; break; }
+            }
+            if (!resolved[out] && !(spec.optional && spec.optional[out])) this._warn(label, 'No field found for "' + out + '" (tried ' + cands.join(', ') + ')');
+        }
+        if (spec.filters) {
+            for (var f in spec.filters) {
+                if (gr.isValidField(f)) gr.addQuery(f, spec.filters[f]);
+                else this._warn(label, 'Filter field ' + f + ' missing – filter not applied');
+            }
+        }
+        if (spec.encodedQuery) gr.addEncodedQuery(spec.encodedQuery);
+        if (spec.orderBy && gr.isValidField(spec.orderBy)) gr.orderBy(spec.orderBy);
+        var limit = this.config.maxRowsPerCategory;
+        gr.setLimit(limit);
+        gr.query();
+
+        var rows = [];
+        var display = spec.display || {};
+        while (gr.next()) {
+            var row = { sys_id: gr.getUniqueValue() };
+            for (var o in resolved) {
+                var v = display[o] ? gr.getDisplayValue(resolved[o]) : gr.getValue(resolved[o]);
+                row[o] = v == null ? '' : String(v);
+            }
+            rows.push(row);
+        }
+        if (rows.length >= limit) this._warn(label, 'Row limit ' + limit + ' reached – results truncated');
+        return rows;
+    },
+
+    _prop: function (name) {
+        var v = gs.getProperty(name, '');
+        if (v) return String(v);
+        // Fallback for properties not exposed to this scope through gs.getProperty
+        var gr = new GlideRecord('sys_properties');
+        if (gr.isValid()) {
+            gr.addQuery('name', name);
+            gr.setLimit(1);
+            gr.query();
+            if (gr.next()) return String(gr.getValue('value') || '');
+        }
+        return '';
+    },
+
+    /** 'active'/'true'/'1' -> 'active', anything else -> 'inactive'. */
+    _activeState: function (v) {
+        v = String(v == null ? '' : v).toLowerCase();
+        return (v == 'active' || v == 'true' || v == '1') ? 'active' : 'inactive';
+    },
+
+    /**
+     * Environment is the OOTB cmdb_ci.environment field (CSDM), set by an
+     * admin on this instance's own CI and never written by the collector, so
+     * a clone cannot carry Prod's classification into Dev.
+     */
+    _environment: function () {
+        var t = this.config.tables && this.config.tables.instance;
+        if (!t) return '';
+        var gr = new GlideRecord(t);
+        if (!gr.isValid() || !gr.isValidField('environment')) return '';
+        gr.addQuery('instance_name', this._prop('instance_name'));
+        gr.setLimit(1);
+        gr.query();
+        return gr.next() ? String(gr.getValue('environment') || '') : '';
+    },
+
+    _parseFamily: function (war) {
+        var m = /^glide-([a-z]+)-/i.exec(war || '');
+        return m ? m[1].charAt(0).toUpperCase() + m[1].substring(1).toLowerCase() : '';
+    },
+
+    _parsePatch: function (war) {
+        var m = /__(patch\d+(?:[-_]hotfix\d+[a-z]?)?)/i.exec(war || '');
+        return m ? m[1] : (war ? 'GA' : '');
+    },
+
+    _hash: function (s) {
+        return new GlideDigest().getSHA256Hex(String(s));
+    },
+
+    /** Stable JSON (sorted keys) so the hash does not depend on key order. */
+    _canon: function (obj) {
+        if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
+        if (Object.prototype.toString.call(obj) == '[object Array]') {
+            var a = [];
+            for (var i = 0; i < obj.length; i++) a.push(this._canon(obj[i]));
+            return '[' + a.join(',') + ']';
+        }
+        var keys = [];
+        for (var k in obj) if (obj.hasOwnProperty(k)) keys.push(k);
+        keys.sort();
+        var parts = [];
+        for (var j = 0; j < keys.length; j++) parts.push(JSON.stringify(keys[j]) + ':' + this._canon(obj[keys[j]]));
+        return '{' + parts.join(',') + '}';
+    },
+
+    _safe: function (label, fn, fallback) {
+        try {
+            return fn.call(this);
+        } catch (e) {
+            this._warn(label, 'Collection failed: ' + (e && e.message ? e.message : e));
+            return fallback;
+        }
+    },
+
+    _warn: function (area, message) {
+        this.warnings.push({ area: area, message: message });
+    },
+
+    type: 'ConfigNowCollector'
+};
+]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:19:41</sys_created_on>
+        <sys_id>16934cee83d0d710f22797efeeaad374</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>ConfigNowCollector</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_script_include_16934cee83d0d710f22797efeeaad374</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 15:58:54</sys_updated_on>
+    </sys_script_include>
+</record_update>

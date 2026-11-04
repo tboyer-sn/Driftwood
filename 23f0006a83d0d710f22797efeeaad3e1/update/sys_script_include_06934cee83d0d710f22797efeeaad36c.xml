@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_2160899_driftw_0.ConfigNowConfig</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description>Configuration defaults and property overrides for the ConfigurationNOW collector.</description>
+        <mobile_callable>false</mobile_callable>
+        <name>ConfigNowConfig</name>
+        <sandbox_callable>false</sandbox_callable>
+        <script><![CDATA[/**
+ * Script Include: ConfigNowConfig
+ * Scope:          x_2160899_driftw_0  (ConfigurationNOW)
+ * Accessible from: This application scope only
+ *
+ * Central configuration for the POC. Defaults live here; each value can be
+ * overridden with an application system property (see README "Properties").
+ *
+ * POC note: the v4.0 design puts tracked-table configuration in
+ * sn_cmdb_table_config. For the POC that table is NOT used yet – the same
+ * knobs are exposed as properties so the collector can be proven first.
+ */
+var ConfigNowConfig = Class.create();
+
+ConfigNowConfig.SCOPE = 'x_2160899_driftw_0';
+ConfigNowConfig.COLLECTOR_VERSION = '0.3.0-poc';
+
+ConfigNowConfig.DEFAULTS = {
+    /* Logical table names -> physical names in the scoped app.
+       A table created as "cmdb_ci_sn_instance" inside scope x_2160899_driftw_0 is
+       stored as "x_2160899_driftw_0_cmdb_ci_sn_instance". Adjust if your scope differs. */
+    tables: {
+        instance:           'x_2160899_driftw_0_cmdb_ci_sn_instance',
+        tracked:            'x_2160899_driftw_0_cmdb_ci_sn_tracked_table',
+        plugins:            'x_2160899_driftw_0_cmdb_ci_sn_tracked_plugin',
+        applications:       'x_2160899_driftw_0_cmdb_ci_sn_tracked_application',
+        mid_servers:        'x_2160899_driftw_0_cmdb_ci_sn_tracked_mid_server',
+        system_properties:  'x_2160899_driftw_0_cmdb_ci_sn_tracked_property',
+        clone_preservers:   'x_2160899_driftw_0_cmdb_ci_sn_tracked_clone_rule',
+        clone_exclusions:   'x_2160899_driftw_0_cmdb_ci_sn_tracked_clone_rule',
+        tables:             'x_2160899_driftw_0_tracked_item',
+        /* admin list of extra / excluded tables for the "tables" category */
+        tableConfig:        'x_2160899_driftw_0_sn_cmdb_table_config'
+    },
+    /* Plain (non-CMDB) storage option – same columns as the tracked CI parent,
+       one table for all categories. Route a category here with the
+       <scope>.table.<category> property. */
+    plainTable: 'x_2160899_driftw_0_tracked_item',
+
+    /* Categories collected, in report order. */
+    categories: ['plugins', 'applications', 'mid_servers', 'system_properties',
+                 'clone_preservers', 'clone_exclusions', 'tables'],
+
+    /* "tables" category: record counts + column fingerprint per table.
+       Tracked = curatedTables + (autoCustomTables ? every x_/u_ table : none)
+                 + active rows in tableConfig, minus inactive rows in tableConfig.
+       The app's own tables and remote (scriptable) tables are never auto-added. */
+    curatedTables: [
+        'sys_script', 'sys_script_include', 'sys_script_client', 'sys_script_fix',
+        'sys_ui_policy', 'sys_ui_policy_action', 'sys_ui_action', 'sys_ui_page', 'sys_ui_script',
+        'sys_security_acl', 'sys_user_role', 'sys_user_role_contains',
+        'sys_dictionary', 'sys_db_object', 'sys_choice', 'sys_properties',
+        'sysauto_script', 'sys_hub_flow', 'sys_hub_action_type_definition', 'wf_workflow',
+        'sys_rest_message', 'sys_soap_message', 'sys_ws_definition', 'sys_ws_operation',
+        'sysevent_email_action', 'sysevent_script_action', 'sys_transform_map', 'sys_data_source',
+        'sp_widget', 'sp_page', 'sys_app_application', 'sys_app_module', 'sys_report',
+        'sys_app', 'sys_store_app'
+    ],
+    autoCustomTables: true,
+    /* Never auto-discover tables with these prefixes (platform-generated).
+       u_cmdb_qb_result_<hash>: one table per CMDB Query Builder result. */
+    autoExcludePrefixes: ['u_cmdb_qb_result_'],
+    maxAutoTables: 500,
+    /* "customer-created" rows of a metadata table: global package or an x_ app */
+    customerQuery: 'sys_package=global^ORsys_scope.scopeSTARTSWITHx_',
+
+    includeInactivePlugins: false,
+
+    /* System properties to report. Missing ones are reported as "not_set". */
+    trackedProperties: [
+        
+        'glide.servlet.uri',
+        'glide.sys.default.tz',
+        'glide.sys.date_format',
+        'glide.sys.time_format',
+        'glide.email.smtp.active',
+        'glide.email.read.active',
+        'glide.email.test.user',
+        'glide.ui.session_timeout',
+        'glide.ui.polaris.experience',
+        'glide.security.use_csrf_token',
+        'glide.login.no_blank_password',
+        'glide.authenticate.multifactor',
+        'glide.authenticate.sso.redirect.idp',
+        'glide.ui.escape_text',
+        'glide.script.use.sandbox',
+        'glide.basicauth.required.scriptedprocessor',
+        'glide.db.max_view_records'
+    ],
+    /* Prefix patterns, e.g. ['glide.email.']. Keep these narrow. */
+    trackedPropertyPrefixes: [],
+
+    /* Secure property handling: 'hash' stores a salted SHA-256 so drift can be
+       detected without storing the secret; 'omit' stores nothing. */
+    secureValueMode: 'hash',
+    secureHashSalt: 'cfgnow-poc',
+
+    maxRowsPerCategory: 5000,
+    maxValueLength: 4000,
+
+    /* Comparison: "category|item_key" pairs that are EXPECTED to differ between
+       instances and are counted as ignored rather than drift. Extend with the
+       <scope>.compare_ignore property (comma-separated). */
+    compareIgnore: [
+        'system_properties|glide.servlet.uri'
+    ],
+    /* Attribute keys never treated as drift (still shown). vendor is ''
+       vs 'ServiceNow' for the same app across releases. */
+    compareIgnoreAttributes: ['vendor', 'tables|source'],
+    /* Instance column order for comparisons (after the current instance, which
+       is always first): explicit instance names from <scope>.instance_order,
+       then by Environment using this ranking, then by name. */
+    instanceOrder: [],
+    environmentRank: ['dev', 'test', 'qa', 'uat', 'stag', 'sub', 'preprod', 'prod'],
+    maxImportItems: 20000
+};
+
+/** Returns DEFAULTS merged with any property overrides. */
+ConfigNowConfig.get = function () {
+    var d = ConfigNowConfig.DEFAULTS;
+    var p = ConfigNowConfig.SCOPE + '.';
+    var cfg = JSON.parse(JSON.stringify(d));
+
+    var list = function (name, fallback) {
+        var v = gs.getProperty(p + name, '');
+        if (!v) return fallback;
+        var out = [];
+        var parts = String(v).split(',');
+        for (var i = 0; i < parts.length; i++) {
+            var s = parts[i].replace(/^\s+|\s+$/g, '');
+            if (s) out.push(s);
+        }
+        return out;
+    };
+
+    cfg.categories = list('categories', cfg.categories);
+    cfg.trackedProperties = list('tracked_properties', cfg.trackedProperties);
+    cfg.trackedPropertyPrefixes = list('tracked_property_prefixes', cfg.trackedPropertyPrefixes);
+    cfg.includeInactivePlugins = gs.getProperty(p + 'include_inactive_plugins', 'false') == 'true';
+    cfg.secureValueMode = gs.getProperty(p + 'secure_value_mode', cfg.secureValueMode);
+    cfg.secureHashSalt = gs.getProperty(p + 'secure_hash_salt', '') || cfg.secureHashSalt;
+    cfg.compareIgnore = cfg.compareIgnore.concat(list('compare_ignore', []));
+    cfg.instanceOrder = list('instance_order', cfg.instanceOrder);
+    // Storage routing: <scope>.table.<category> overrides the target table,
+    // e.g. x_..._config_0.table.system_properties = x_..._config_0_tracked_item
+    // routes that category to the plain (non-CI) table. Post-POC this moves
+    // into sn_cmdb_table_config (one row per category).
+    for (var c in cfg.tables) {
+        var t = gs.getProperty(p + 'table.' + c, '');
+        if (t) cfg.tables[c] = t;
+    }
+    var max = parseInt(gs.getProperty(p + 'max_rows_per_category', ''), 10);
+    if (max > 0) cfg.maxRowsPerCategory = max;
+    return cfg;
+};
+
+ConfigNowConfig.prototype = {
+    initialize: function () {},
+    type: 'ConfigNowConfig'
+};
+]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:19:40</sys_created_on>
+        <sys_id>06934cee83d0d710f22797efeeaad36c</sys_id>
+        <sys_mod_count>4</sys_mod_count>
+        <sys_name>ConfigNowConfig</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_script_include_06934cee83d0d710f22797efeeaad36c</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 15:58:54</sys_updated_on>
+    </sys_script_include>
+</record_update>

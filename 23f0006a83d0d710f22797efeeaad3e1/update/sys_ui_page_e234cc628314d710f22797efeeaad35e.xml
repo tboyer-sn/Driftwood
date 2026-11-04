@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_page">
+    <sys_ui_page action="INSERT_OR_UPDATE">
+        <category>general</category>
+        <client_script><![CDATA[/* UI Page client script: current_settings (x_2160899_driftw_0) */
+addLoadEvent(function () {
+    var API = '/api/x_2160899_driftw_0/configurationnow/current';
+    var LABELS = {
+        plugins: 'Plugins',
+        applications: 'Applications',
+        mid_servers: 'MID Servers',
+        system_properties: 'System Properties',
+        clone_preservers: 'Clone Preservers',
+        clone_exclusions: 'Clone Exclusions',
+        tables: 'Tables'
+    };
+    var COLUMNS = {
+        plugins: [['key', 'Plugin ID', 1], ['name', 'Name'], ['version', 'Version'], ['state', 'State', 0, 1]],
+        applications: [['key', 'Scope', 1], ['name', 'Name'], ['version', 'Version'], ['attributes.source', 'Source'], ['runtime.vendor', 'Vendor'], ['state', 'State', 0, 1]],
+        mid_servers: [['name', 'Name'], ['version', 'Version'], ['runtime.status', 'Status'], ['state', 'Validated', 0, 1], ['attributes.host_name', 'Host'], ['attributes.ip_address', 'IP'], ['runtime.last_refreshed', 'Last refreshed']],
+        system_properties: [['key', 'Property', 1], ['value', 'Value', 1], ['attributes.type', 'Type'], ['attributes.scope', 'Scope'], ['state', 'State', 0, 1]],
+        clone_preservers: [['name', 'Name'], ['attributes.table', 'Table', 1], ['value', 'Condition', 1], ['state', 'State', 0, 1]],
+        clone_exclusions: [['attributes.table', 'Table', 1], ['state', 'State', 0, 1]],
+        tables: [['key', 'Table', 1], ['name', 'Label'], ['attributes.total', 'Rows'], ['attributes.customer', 'Customer rows'],
+                 ['attributes.column_count', 'Columns'], ['attributes.parent', 'Extends', 1], ['attributes.fingerprint', 'Schema fingerprint', 1],
+                 ['attributes.source', 'Tracked because'], ['state', 'State', 0, 1]]
+    };
+
+    var data = null, current = null;
+    var $ = function (id) { return document.getElementById(id); };
+
+    function el(tag, cls, text) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (text != null) e.appendChild(document.createTextNode(String(text)));
+        return e;
+    }
+    function get(obj, path) {
+        var parts = path.split('.');
+        for (var i = 0; i < parts.length; i++) { if (obj == null) return ''; obj = obj[parts[i]]; }
+        return obj == null ? '' : obj;
+    }
+    function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+    function load() {
+        $('cfgnow-status').textContent = 'Loading…';
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', API, true);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-UserToken', window.g_ck);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState != 4) return;
+            if (xhr.status != 200) {
+                $('cfgnow-status').textContent = 'Error ' + xhr.status + ' – check role x_2160899_driftw_0.configuration_read';
+                return;
+            }
+            data = JSON.parse(xhr.responseText).result;
+            render();
+        };
+        xhr.send();
+    }
+
+    function render() {
+        var inst = data.instance || {};
+        $('cfgnow-sub').textContent = (inst.instance_name || '') + ' · collected ' + data.collected_at +
+            ' UTC in ' + data.duration_ms + ' ms · collector ' + data.collector_version;
+        $('cfgnow-status').textContent = '';
+
+        var w = $('cfgnow-warnings'); clear(w);
+        if (data.warnings && data.warnings.length) {
+            var box = el('div', 'warn');
+            box.appendChild(el('strong', null, data.warnings.length + ' collection warning(s)'));
+            var ul = el('ul');
+            for (var i = 0; i < data.warnings.length; i++) ul.appendChild(el('li', null, data.warnings[i].area + ': ' + data.warnings[i].message));
+            box.appendChild(ul);
+            w.appendChild(box);
+        }
+
+        var cards = $('cfgnow-cards'); clear(cards);
+        var info = [
+            ['Instance', inst.instance_name], ['Family', inst.family || inst.build_name], ['Patch', inst.patch],
+            ['Build date', inst.build_date], ['Environment', inst.environment || 'Not set'], ['Prod flag (property)', inst.production_flag ? 'true' : 'false'],
+            ['Nodes', inst.node_count], ['Time zone', inst.timezone], ['URL', inst.instance_url]
+        ];
+        for (var c = 0; c < info.length; c++) {
+            var card = el('div', 'card');
+            card.appendChild(el('div', 'k', info[c][0]));
+            card.appendChild(el('div', 'v', info[c][1] == null || info[c][1] === '' ? '—' : info[c][1]));
+            cards.appendChild(card);
+        }
+
+        var tabs = $('cfgnow-tabs'); clear(tabs);
+        var first = null;
+        for (var cat in data.categories) {
+            if (!first) first = cat;
+            var t = el('div', 'tab' + (cat == current ? ' on' : ''), LABELS[cat] || cat);
+            t.appendChild(el('span', 'n', data.categories[cat].count));
+            t.setAttribute('data-cat', cat);
+            t.onclick = function () { current = this.getAttribute('data-cat'); render(); };
+            tabs.appendChild(t);
+        }
+        if (!current || !data.categories[current]) { current = first; if (current) return render(); }
+        renderTable();
+    }
+
+    function renderTable() {
+        var host = $('cfgnow-table'); clear(host);
+        if (!current) return;
+        var cols = COLUMNS[current] || [['key', 'Key'], ['value', 'Value'], ['state', 'State']];
+        var f = ($('cfgnow-filter').value || '').toLowerCase();
+        var items = data.categories[current].items;
+        var table = el('table'), thead = el('thead'), hr = el('tr');
+        for (var h = 0; h < cols.length; h++) hr.appendChild(el('th', null, cols[h][1]));
+        thead.appendChild(hr); table.appendChild(thead);
+        var tbody = el('tbody'), shown = 0;
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (f && JSON.stringify(it).toLowerCase().indexOf(f) == -1) continue;
+            var tr = el('tr');
+            for (var c = 0; c < cols.length; c++) {
+                var v = get(it, cols[c][0]);
+                var td = el('td', cols[c][2] ? 'mono' : null);
+                if (cols[c][3]) td.appendChild(el('span', 'pill ' + v, v || '—'));
+                else td.appendChild(document.createTextNode(v === '' ? '—' : String(v)));
+                tr.appendChild(td);
+            }
+            tbody.appendChild(tr); shown++;
+        }
+        table.appendChild(tbody); host.appendChild(table);
+        $('cfgnow-status').textContent = shown + ' of ' + items.length + ' shown';
+    }
+
+    $('cfgnow-refresh').onclick = load;
+    $('cfgnow-filter').oninput = function () { if (data) renderTable(); };
+    $('cfgnow-download').onclick = function () {
+        if (!data) return;
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'configurationnow_' + (data.instance.instance_name || 'instance') + '_' + data.collected_at.replace(/[: ]/g, '-') + '.json';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    };
+    load();
+});
+]]></client_script>
+        <description>ConfigurationNOW: current instance settings report</description>
+        <direct>false</direct>
+        <endpoint>x_2160899_driftw_0_current_settings.do</endpoint>
+        <html><![CDATA[<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  UI Page:  current_settings      (endpoint: x_2160899_driftw_0_current_settings.do)
+  Scope:    x_2160899_driftw_0
+  HTML:     this file
+  Client script: x_2160899_driftw_0_current_settings.client.js
+  Processing script: (none)
+  Module:   ConfigurationNOW > Current Instance Settings  (roles: x_2160899_driftw_0.configuration_read)
+-->
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+<style>
+  #cfgnow { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #1f2933; padding: 16px 24px; max-width: 1400px; }
+  #cfgnow h1 { font-size: 22px; margin: 0 0 4px 0; font-weight: 600; }
+  #cfgnow .sub { color: #616e7c; margin-bottom: 16px; font-size: 13px; }
+  #cfgnow .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  #cfgnow button { border: 1px solid #9aa5b1; background: #fff; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  #cfgnow button.primary { background: #1f4e79; color: #fff; border-color: #1f4e79; }
+  #cfgnow input[type=search] { border: 1px solid #9aa5b1; border-radius: 4px; padding: 6px 10px; min-width: 260px; font-size: 13px; }
+  #cfgnow .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  #cfgnow .card { border: 1px solid #d9e2ec; border-radius: 6px; padding: 10px 12px; background: #f8fafc; }
+  #cfgnow .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #616e7c; }
+  #cfgnow .card .v { font-size: 15px; font-weight: 600; margin-top: 2px; word-break: break-all; }
+  #cfgnow .tabs { display: flex; gap: 4px; border-bottom: 1px solid #d9e2ec; margin-bottom: 10px; flex-wrap: wrap; }
+  #cfgnow .tab { padding: 8px 12px; cursor: pointer; border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0; font-size: 13px; }
+  #cfgnow .tab.on { border-color: #d9e2ec; background: #fff; font-weight: 600; margin-bottom: -1px; }
+  #cfgnow .tab .n { color: #616e7c; font-weight: 400; margin-left: 4px; }
+  #cfgnow table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  #cfgnow th { text-align: left; background: #f0f4f8; padding: 6px 8px; border-bottom: 1px solid #d9e2ec; position: sticky; top: 0; }
+  #cfgnow td { padding: 5px 8px; border-bottom: 1px solid #eef2f6; vertical-align: top; word-break: break-word; }
+  #cfgnow td.mono { font-family: Consolas, Menlo, monospace; font-size: 12px; }
+  #cfgnow .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; background: #e4e7eb; }
+  #cfgnow .pill.active, #cfgnow .pill.set, #cfgnow .pill.validated { background: #dcefe3; color: #1d6b3a; }
+  #cfgnow .pill.inactive, #cfgnow .pill.not_set { background: #f3e8d6; color: #8a5a00; }
+  #cfgnow .pill.secure { background: #e3e8f8; color: #2d3f8f; }
+  #cfgnow .warn { border: 1px solid #f0c36d; background: #fff8e6; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 12.5px; }
+  #cfgnow .muted { color: #7b8794; }
+</style>
+<div id="cfgnow">
+  <h1>Current Instance Settings</h1>
+  <div class="sub" id="cfgnow-sub">ConfigurationNOW POC – live read of this instance</div>
+  <div class="toolbar">
+    <button class="primary" id="cfgnow-refresh" type="button">Refresh</button>
+    <button id="cfgnow-download" type="button">Download JSON</button>
+    <input type="search" id="cfgnow-filter" placeholder="Filter current tab…" />
+    <span class="muted" id="cfgnow-status">Loading…</span>
+  </div>
+  <div id="cfgnow-warnings"></div>
+  <div class="cards" id="cfgnow-cards"></div>
+  <div class="tabs" id="cfgnow-tabs"></div>
+  <div id="cfgnow-table"></div>
+</div>
+</j:jelly>
+]]></html>
+        <name>current_settings</name>
+        <processing_script/>
+        <sys_class_name>sys_ui_page</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:22:25</sys_created_on>
+        <sys_id>e234cc628314d710f22797efeeaad35e</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>current_settings</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_ui_page_e234cc628314d710f22797efeeaad35e</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 15:59:30</sys_updated_on>
+    </sys_ui_page>
+</record_update>

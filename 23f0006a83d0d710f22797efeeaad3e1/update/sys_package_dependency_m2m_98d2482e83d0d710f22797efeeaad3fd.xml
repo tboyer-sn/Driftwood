@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_package_dependency_m2m">
+    <sys_package_dependency_m2m action="INSERT_OR_UPDATE">
+        <dependency display_value="Configuration Management (CMDB)" source="com.snc.cmdb">1932568b3cb3031054699bda64280845</dependency>
+        <min_version>1.1</min_version>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:16:16</sys_created_on>
+        <sys_id>98d2482e83d0d710f22797efeeaad3fd</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 14:16:16</sys_updated_on>
+    </sys_package_dependency_m2m>
+</record_update>

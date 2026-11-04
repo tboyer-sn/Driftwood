@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_index">
+    <sys_index action="INSERT_OR_UPDATE">
+        <access_method>btree</access_method>
+        <col_name_string>instance,item_category,item_key</col_name_string>
+        <index_col_name>27e208ae83d0d710f22797efeeaad306,6be208ae83d0d710f22797efeeaad32f,fbe208ae83d0d710f22797efeeaad369<sys_dictionary element="instance" name="x_2160899_driftw_0_tracked_item">27e208ae83d0d710f22797efeeaad306</sys_dictionary>
+            <sys_dictionary element="item_category" name="x_2160899_driftw_0_tracked_item">6be208ae83d0d710f22797efeeaad32f</sys_dictionary>
+            <sys_dictionary element="item_key" name="x_2160899_driftw_0_tracked_item">fbe208ae83d0d710f22797efeeaad369</sys_dictionary>
+        </index_col_name>
+        <logical_table_name>x_2160899_driftw_0_tracked_item</logical_table_name>
+        <sys_class_name>sys_index</sys_class_name>
+        <sys_created_by>system</sys_created_by>
+        <sys_created_on>2026-11-04 14:27:14</sys_created_on>
+        <sys_id>fc5548268314d710f22797efeeaad3d3</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>x_2160899_driftw_0_tracked_item</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_index_x_2160899_driftw_0_tracked_item_instance_item_category_item_key</sys_update_name>
+        <sys_updated_by>system</sys_updated_by>
+        <sys_updated_on>2026-11-04 14:27:14</sys_updated_on>
+        <table display_value="SN Tracked Item" name="x_2160899_driftw_0_tracked_item">65d24c2e83d0d710f22797efeeaad36a</table>
+        <unique_index>false</unique_index>
+    </sys_index>
+</record_update>

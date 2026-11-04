@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_2160899_driftw_0.ConfigNowWriter</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description>Persists a ConfigNowCollector snapshot into the CI / plain tracking tables (change-only).</description>
+        <mobile_callable>false</mobile_callable>
+        <name>ConfigNowWriter</name>
+        <sandbox_callable>false</sandbox_callable>
+        <script><![CDATA[/**
+ * Script Include: ConfigNowWriter
+ * Scope:          x_2160899_driftw_0  (ConfigurationNOW)
+ * Accessible from: This application scope only
+ *
+ * Persists a ConfigNowCollector snapshot into the CMDB:
+ *   - one x_2160899_driftw_0_cmdb_ci_sn_instance CI (coalesce: instance_name)
+ *   - one tracked item per item in the routed table (CI subclass or plain)
+ *     (coalesce: instance + item_category + item_key)
+ *
+ * Column names avoid cmdb_ci's own `category` and `attributes` fields,
+ * which other CMDB tooling uses.
+ *
+ * Writes are change-only: a record is updated only when its value_hash or
+ * presence changes, so daily runs do not generate audit noise. Items that
+ * disappear are kept with present=false (the start of drift history).
+ *
+ * POC note: writes use GlideRecord directly, not the IRE
+ * (IdentificationEngineScriptableApi). Moving to IRE + identification rules is
+ * a post-POC step once the class model is final.
+ */
+var ConfigNowWriter = Class.create();
+ConfigNowWriter.prototype = {
+
+    initialize: function (options) {
+        this.options = options || {};
+        this.config = this.options.config || ConfigNowConfig.get();
+        this.T = this.config.tables;
+    },
+
+    /**
+     * options.timestamp – use this GlideDateTime value (UTC 'YYYY-MM-DD HH:MM:SS')
+     *                     instead of now; ConfigNowImporter passes the
+     *                     snapshot's own collected_at
+     * options.source    – 'local' (default) or 'import', recorded in the summary
+     */
+    persist: function (snapshot, options) {
+        options = options || {};
+        var now = String(options.timestamp || new GlideDateTime().getValue());
+        var result = { instance_sys_id: '', categories: {}, totals: { inserted: 0, updated: 0, unchanged: 0, removed: 0, restored: 0 } };
+
+        var instId = this._upsertInstance(snapshot, now);
+        result.instance_sys_id = instId;
+
+        for (var cat in snapshot.categories) {
+            var table = this.T[cat];
+            if (!table) continue;
+            var r = this._syncCategory(instId, cat, table, snapshot.categories[cat].items, now);
+            result.categories[cat] = r;
+            for (var k in r) result.totals[k] += r[k];
+        }
+
+        // Final status on the instance CI
+        var gr = new GlideRecord(this.T.instance);
+        if (gr.get(instId)) {
+            gr.setValue('collection_status', snapshot.warnings && snapshot.warnings.length ? 'completed_with_warnings' : 'completed');
+            gr.setValue('collection_summary', this._clip(JSON.stringify({
+                source: options.source || 'local',
+                collector_scope: snapshot.collector_scope || '',
+                categories: (function (c) { var k = [], x; for (x in c) k.push(x); return k; })(snapshot.categories || {}),
+                collected_at: snapshot.collected_at,
+                collector_version: snapshot.collector_version,
+                duration_ms: snapshot.duration_ms,
+                totals: result.totals,
+                warnings: snapshot.warnings
+            }), 4000));
+            gr.update();
+        }
+        return result;
+    },
+
+    _upsertInstance: function (snapshot, now) {
+        var inst = snapshot.instance || {};
+        var name = inst.instance_name || gs.getProperty('instance_name');
+        var gr = new GlideRecord(this.T.instance);
+        gr.addQuery('instance_name', name);
+        gr.setLimit(1);
+        gr.query();
+        var isNew = !gr.next();
+        if (isNew) gr.initialize();
+
+        gr.setValue('name', name);
+        gr.setValue('instance_name', name);
+        gr.setValue('instance_id', inst.instance_id || '');
+        gr.setValue('instance_url', inst.instance_url || '');
+        gr.setValue('build_name', inst.build_name || '');
+        gr.setValue('build_tag', inst.build_tag || '');
+        gr.setValue('build_date', inst.build_date || '');
+        gr.setValue('war', inst.war || '');
+        gr.setValue('family', inst.family || '');
+        gr.setValue('patch', inst.patch || '');
+        // Inherited fields (cmdb_ci_appl / cmdb_ci)
+        gr.setValue('version', this._clip([inst.family, inst.patch].join(' ').replace(/^\s+|\s+$/g, ''), 100));
+        gr.setValue('fqdn', this._host(inst.instance_url));
+        gr.setValue('production_flag', inst.production_flag ? 'true' : 'false');
+        // "environment" (inherited from cmdb_ci, CSDM) is admin-maintained –
+        // intentionally never written here.
+        gr.setValue('timezone', inst.timezone || '');
+        gr.setValue('node_count', inst.node_count || 0);
+        gr.setValue('nodes', this._clip(JSON.stringify(inst.nodes || []), 4000));
+        gr.setValue('last_collected', now);
+        gr.setValue('collection_status', 'running');
+        return isNew ? gr.insert() : (gr.update(), gr.getUniqueValue());
+    },
+
+    _syncCategory: function (instId, cat, table, items, now) {
+        var r = { inserted: 0, updated: 0, unchanged: 0, removed: 0, restored: 0 };
+
+        // Load existing state (sys_id, hash, presence) for this instance/category
+        var existing = {};
+        var ex = new GlideRecord(table);
+        ex.addQuery('instance', instId);
+        ex.addQuery('item_category', cat);
+        ex.query();
+        while (ex.next()) {
+            existing[ex.getValue('item_key')] = {
+                sys_id: ex.getUniqueValue(),
+                hash: ex.getValue('value_hash'),
+                present: ex.getValue('present') == '1' || ex.getValue('present') == 'true'
+            };
+        }
+
+        var seen = {};
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (seen[it.key]) continue; // duplicate key in source – first wins
+            seen[it.key] = true;
+            var cur = existing[it.key];
+
+            if (!cur) {
+                var ins = new GlideRecord(table);
+                ins.initialize();
+                ins.setValue('instance', instId);
+                ins.setValue('item_category', cat);
+                ins.setValue('item_key', it.key);
+                ins.setValue('first_seen', now);
+                this._apply(ins, it, now);
+                ins.insert();
+                r.inserted++;
+                continue;
+            }
+            if (cur.hash == it.hash && cur.present) {
+                r.unchanged++;
+                continue;
+            }
+            var up = new GlideRecord(table);
+            if (up.get(cur.sys_id)) {
+                this._apply(up, it, now);
+                up.update();
+                if (!cur.present) r.restored++; else r.updated++;
+            }
+        }
+
+        // Anything previously present but not seen this run -> present=false
+        for (var key in existing) {
+            if (seen[key] || !existing[key].present) continue;
+            var gone = new GlideRecord(table);
+            if (gone.get(existing[key].sys_id)) {
+                gone.setValue('present', false);
+                gone.setValue('last_changed', now);
+                gone.update();
+                r.removed++;
+            }
+        }
+        return r;
+    },
+
+    _apply: function (gr, it, now) {
+        gr.setValue('name', this._clip(it.name, 255));
+        gr.setValue('item_value', it.value);
+        gr.setValue('item_version', it.version);
+        gr.setValue('item_state', it.state);
+        gr.setValue('value_hash', it.hash);
+        gr.setValue('item_attributes', this._clip(JSON.stringify(it.attributes || {}), 4000));
+        gr.setValue('runtime', this._clip(JSON.stringify(it.runtime || {}), 4000));
+        gr.setValue('source_sys_id', it.source_sys_id || '');
+        gr.setValue('is_secure', it.secure ? true : false);
+        gr.setValue('secure_value_hash', it.secure_value_hash || '');
+        gr.setValue('present', true);
+        gr.setValue('last_changed', now);
+    },
+
+    _host: function (url) {
+        var m = /^[a-z]+:\/\/([^\/:]+)/i.exec(url || '');
+        return m ? m[1] : '';
+    },
+
+    _clip: function (s, n) {
+        s = s == null ? '' : String(s);
+        return s.length > n ? s.substring(0, n) : s;
+    },
+
+    type: 'ConfigNowWriter'
+};
+]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:19:41</sys_created_on>
+        <sys_id>96934cee83d0d710f22797efeeaad3c4</sys_id>
+        <sys_mod_count>3</sys_mod_count>
+        <sys_name>ConfigNowWriter</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_script_include_96934cee83d0d710f22797efeeaad3c4</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 15:58:54</sys_updated_on>
+    </sys_script_include>
+</record_update>

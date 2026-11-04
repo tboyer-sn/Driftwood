@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="enforce_dot_walk_cross_scope_access=true" db_object_id="65d24c2e83d0d710f22797efeeaad36a" label="SN Tracked Item" max_length="40" name="x_2160899_driftw_0_tracked_item" type="collection">
+        <element label="Secure value hash" max_length="64" name="secure_value_hash" type="string"/>
+        <element display="true" label="Name" max_length="255" name="name" type="string"/>
+        <element label="Is secure" max_length="40" name="is_secure" type="boolean"/>
+        <element label="First seen" max_length="40" name="first_seen" type="glide_date_time"/>
+        <element label="Instance" max_length="32" name="instance" reference="x_2160899_driftw_0_cmdb_ci_sn_instance" type="reference"/>
+        <element label="Item value" max_length="4000" name="item_value" type="string"/>
+        <element label="Source sys ID" max_length="32" name="source_sys_id" type="string"/>
+        <element label="Value hash" max_length="64" name="value_hash" type="string"/>
+        <element default="true" label="Present" max_length="40" name="present" type="boolean"/>
+        <element choice="1" label="Item category" max_length="40" name="item_category" type="string">
+            <choice>
+                <element inactive_on_update="false" label="Tables" sequence="70" value="tables"/>
+                <element inactive_on_update="false" label="MID Servers" sequence="30" value="mid_servers"/>
+                <element inactive_on_update="false" label="Applications" sequence="20" value="applications"/>
+                <element inactive_on_update="false" label="Plugins" sequence="10" value="plugins"/>
+                <element inactive_on_update="false" label="Clone Exclusions" sequence="60" value="clone_exclusions"/>
+                <element inactive_on_update="false" label="Clone Preservers" sequence="50" value="clone_preservers"/>
+                <element inactive_on_update="false" label="System Properties" sequence="40" value="system_properties"/>
+            </choice>
+        </element>
+        <element label="Item attributes" max_length="4000" name="item_attributes" type="string"/>
+        <element label="Last changed" max_length="40" name="last_changed" type="glide_date_time"/>
+        <element label="Item state" max_length="100" name="item_state" type="string"/>
+        <element label="Runtime" max_length="4000" name="runtime" type="string"/>
+        <element label="Item version" max_length="100" name="item_version" type="string"/>
+        <element label="Item key" max_length="255" name="item_key" type="string"/>
+        <index name="index">
+            <element name="instance"/>
+            <element name="item_category"/>
+            <element name="item_key"/>
+        </index>
+    </element>
+</database>

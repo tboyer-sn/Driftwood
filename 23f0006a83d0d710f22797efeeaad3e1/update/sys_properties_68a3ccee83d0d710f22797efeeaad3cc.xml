@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_properties">
+    <sys_properties action="INSERT_OR_UPDATE">
+        <choices/>
+        <description>Storage routing for category 'clone_preservers': target table (CI subclass or plain tracked_item).</description>
+        <ignore_cache>false</ignore_cache>
+        <is_private>false</is_private>
+        <name>x_2160899_driftw_0.table.clone_preservers</name>
+        <read_roles/>
+        <suffix>table.clone_preservers</suffix>
+        <sys_class_name>sys_properties</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:19:50</sys_created_on>
+        <sys_id>68a3ccee83d0d710f22797efeeaad3cc</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>x_2160899_driftw_0.table.clone_preservers</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_properties_68a3ccee83d0d710f22797efeeaad3cc</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 14:19:50</sys_updated_on>
+        <type>string</type>
+        <value>x_2160899_driftw_0_tracked_item</value>
+        <write_roles/>
+    </sys_properties>
+    <sys_translated_text action="delete_multiple" query="documentkey=68a3ccee83d0d710f22797efeeaad3cc"/>
+</record_update>
