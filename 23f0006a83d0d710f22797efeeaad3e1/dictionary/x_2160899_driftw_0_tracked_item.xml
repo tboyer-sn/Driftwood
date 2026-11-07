@@ -13,6 +13,8 @@
             <choice>
                 <element inactive_on_update="false" label="Tables" sequence="70" value="tables"/>
                 <element inactive_on_update="false" label="MID Servers" sequence="30" value="mid_servers"/>
+                <element inactive_on_update="false" label="Update Sets" sequence="90" value="update_sets"/>
+                <element inactive_on_update="false" label="Columns" sequence="80" value="columns"/>
                 <element inactive_on_update="false" label="Applications" sequence="20" value="applications"/>
                 <element inactive_on_update="false" label="Plugins" sequence="10" value="plugins"/>
                 <element inactive_on_update="false" label="Clone Exclusions" sequence="60" value="clone_exclusions"/>
@@ -21,9 +23,11 @@
             </choice>
         </element>
         <element label="Item attributes" max_length="4000" name="item_attributes" type="string"/>
+        <element label="Source table" max_length="80" name="source_table" type="string"/>
         <element label="Last changed" max_length="40" name="last_changed" type="glide_date_time"/>
         <element label="Item state" max_length="100" name="item_state" type="string"/>
         <element label="Runtime" max_length="4000" name="runtime" type="string"/>
+        <element label="Source record" max_length="1024" name="source_url" type="url"/>
         <element label="Item version" max_length="100" name="item_version" type="string"/>
         <element label="Item key" max_length="255" name="item_key" type="string"/>
         <index name="index">

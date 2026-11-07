@@ -5,13 +5,13 @@
         <api_name>x_2160899_driftw_0.ConfigNowConfig</api_name>
         <caller_access/>
         <client_callable>false</client_callable>
-        <description>Configuration defaults and property overrides for the ConfigurationNOW collector.</description>
+        <description>Configuration defaults and property overrides for the Driftwood collector.</description>
         <mobile_callable>false</mobile_callable>
         <name>ConfigNowConfig</name>
         <sandbox_callable>false</sandbox_callable>
         <script><![CDATA[/**
  * Script Include: ConfigNowConfig
- * Scope:          x_2160899_driftw_0  (ConfigurationNOW)
+ * Scope:          x_2160899_driftw_0  (Driftwood)
  * Accessible from: This application scope only
  *
  * Central configuration for the POC. Defaults live here; each value can be
@@ -24,7 +24,7 @@
 var ConfigNowConfig = Class.create();
 
 ConfigNowConfig.SCOPE = 'x_2160899_driftw_0';
-ConfigNowConfig.COLLECTOR_VERSION = '0.3.0-poc';
+ConfigNowConfig.COLLECTOR_VERSION = '0.5.1-poc';
 
 ConfigNowConfig.DEFAULTS = {
     /* Logical table names -> physical names in the scoped app.
@@ -40,6 +40,11 @@ ConfigNowConfig.DEFAULTS = {
         clone_preservers:   'x_2160899_driftw_0_cmdb_ci_sn_tracked_clone_rule',
         clone_exclusions:   'x_2160899_driftw_0_cmdb_ci_sn_tracked_clone_rule',
         tables:             'x_2160899_driftw_0_tracked_item',
+        columns:            'x_2160899_driftw_0_tracked_item',
+        update_sets:        'x_2160899_driftw_0_tracked_item',
+        /* history (v0.5) */
+        run:                'x_2160899_driftw_0_collection_run',
+        change:             'x_2160899_driftw_0_item_change',
         /* admin list of extra / excluded tables for the "tables" category */
         tableConfig:        'x_2160899_driftw_0_sn_cmdb_table_config'
     },
@@ -50,7 +55,25 @@ ConfigNowConfig.DEFAULTS = {
 
     /* Categories collected, in report order. */
     categories: ['plugins', 'applications', 'mid_servers', 'system_properties',
-                 'clone_preservers', 'clone_exclusions', 'tables'],
+                 'clone_preservers', 'clone_exclusions', 'tables', 'columns', 'update_sets'],
+
+    /* Update sets (v0.5): local sys_update_set + retrieved sys_remote_update_set,
+       one item per ORIGINATING set (a set built on Dev and committed on Test has
+       the same key on both). The first run collects all; later runs collected
+       through the writer only read sets changed since the last run's watermark
+       (minus updateSetsOverlapMinutes) plus every open set, and a full sweep
+       runs every updateSetsFullDays days so deleted sets are noticed. */
+    updateSetsFullDays: 7,
+    updateSetsOverlapMinutes: 60,
+    maxUpdateSets: 20000,
+
+    /* History (v0.5): change log + snapshot attachment per run; retention in
+       days (global property <scope>.retention_days, or the instance CI's
+       "History retention (days)" field, which wins). The latest run per
+       instance is always kept. */
+    logChanges: true,
+    keepSnapshots: true,
+    retentionDays: 180,
 
     /* "tables" category: record counts + column fingerprint per table.
        Tracked = curatedTables + (autoCustomTables ? every x_/u_ table : none)
@@ -72,8 +95,23 @@ ConfigNowConfig.DEFAULTS = {
        u_cmdb_qb_result_<hash>: one table per CMDB Query Builder result. */
     autoExcludePrefixes: ['u_cmdb_qb_result_'],
     maxAutoTables: 500,
-    /* "customer-created" rows of a metadata table: global package or an x_ app */
-    customerQuery: 'sys_package=global^ORsys_scope.scopeSTARTSWITHx_',
+    /* "Customer" rows of a metadata table, in two counts (finding d27):
+       customer_scoped  – rows in an x_ application scope (exact). The app's
+                          own scope is always excluded.
+       customer_global  – rows in the Global package NOT created by platform or
+                          ServiceNow accounts. A HEURISTIC: plugin activations
+                          run as admin and some ServiceNow staff accounts still
+                          count, so treat it as an estimate.
+       Override with <scope>.customer_scoped_query / customer_global_query. */
+    customerScopedQuery: 'sys_scope.scopeSTARTSWITHx_',
+    customerGlobalQuery: 'sys_package=global^sys_created_byNOT INsystem,maint,glide.maint,guest^sys_created_byNOT LIKE@snc^sys_created_byNOT LIKE.maint',
+
+    /* Option 2 (prepared, off by default): count records whose current version
+       came from a customer update set (sys_update_version). Precise but heavier;
+       validate with diag_customer_updates.js first, then turn on with
+       <scope>.customer_history = true. */
+    customerHistory: false,
+    customerHistorySources: ['sys_update_set', 'sys_remote_update_set'],
 
     includeInactivePlugins: false,
 
@@ -123,7 +161,25 @@ ConfigNowConfig.DEFAULTS = {
        then by Environment using this ranking, then by name. */
     instanceOrder: [],
     environmentRank: ['dev', 'test', 'qa', 'uat', 'stag', 'sub', 'preprod', 'prod'],
-    maxImportItems: 20000
+    /* Drift kind per attribute (comparison rows list their kinds; a row whose
+       only differences are 'count' is flagged count_only so the page can hide
+       it). Attributes not listed are 'schema' for tables/columns and 'config'
+       elsewhere; a version difference is 'version'. */
+    driftKinds: {
+        tables: { total: 'count', customer: 'count', customer_scoped: 'count', customer_global: 'count', customer_updates: 'count',
+                  clone_exclusion_rules: 'clone', clone_preserver_rules: 'clone' },
+        update_sets: { update_count: 'count', remote_update_count: 'count' }
+    },
+    maxImportItems: 40000,
+    /* sys_id drift (optional): compare each item's source record sys_id across
+       instances. Off by default (<scope>.compare_sys_ids, or sys_ids=true on the
+       compare/matrix API). Categories whose records get a new sys_id on every
+       instance are not checked (override with <scope>.sys_id_exclude):
+       measured on Brazil vs Australia PDIs, sys_plugins, sys_db_object and
+       sys_dictionary sys_ids differ for ~all out-of-box records, while store
+       apps, custom apps and clone rules match. */
+    compareSysIds: false,
+    sysIdExclude: ['mid_servers', 'update_sets', 'plugins', 'tables', 'columns']
 };
 
 /** Returns DEFAULTS merged with any property overrides. */
@@ -152,6 +208,17 @@ ConfigNowConfig.get = function () {
     cfg.secureHashSalt = gs.getProperty(p + 'secure_hash_salt', '') || cfg.secureHashSalt;
     cfg.compareIgnore = cfg.compareIgnore.concat(list('compare_ignore', []));
     cfg.instanceOrder = list('instance_order', cfg.instanceOrder);
+    cfg.customerScopedQuery = String(gs.getProperty(p + 'customer_scoped_query', '') || '') || cfg.customerScopedQuery;
+    cfg.customerGlobalQuery = String(gs.getProperty(p + 'customer_global_query', '') || '') || cfg.customerGlobalQuery;
+    cfg.customerHistory = String(gs.getProperty(p + 'customer_history', 'false')) == 'true';
+    cfg.logChanges = String(gs.getProperty(p + 'log_changes', 'true')) != 'false';
+    cfg.keepSnapshots = String(gs.getProperty(p + 'keep_snapshots', 'true')) != 'false';
+    var rd = parseInt(String(gs.getProperty(p + 'retention_days', '') || ''), 10);
+    if (rd > 0) cfg.retentionDays = rd;
+    var fd = parseInt(String(gs.getProperty(p + 'update_sets_full_days', '') || ''), 10);
+    if (fd > 0) cfg.updateSetsFullDays = fd;
+    cfg.compareSysIds = String(gs.getProperty(p + 'compare_sys_ids', 'false')) == 'true';
+    cfg.sysIdExclude = list('sys_id_exclude', cfg.sysIdExclude);
     // Storage routing: <scope>.table.<category> overrides the target table,
     // e.g. x_..._config_0.table.system_properties = x_..._config_0_tracked_item
     // routes that category to the plain (non-CI) table. Post-POC this moves
@@ -174,13 +241,13 @@ ConfigNowConfig.prototype = {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:19:40</sys_created_on>
         <sys_id>06934cee83d0d710f22797efeeaad36c</sys_id>
-        <sys_mod_count>4</sys_mod_count>
+        <sys_mod_count>8</sys_mod_count>
         <sys_name>ConfigNowConfig</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_script_include_06934cee83d0d710f22797efeeaad36c</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-04 15:58:54</sys_updated_on>
+        <sys_updated_on>2026-11-07 17:47:40</sys_updated_on>
     </sys_script_include>
 </record_update>

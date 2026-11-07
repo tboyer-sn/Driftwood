@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_ui_related sys_domain="global" table="x_2160899_driftw_0_cmdb_ci_sn_instance" version="2" view="">
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>1</position>
+            <related_list>REL:f03e88e7831c9f10f22797efeeaad3ad</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:56</sys_created_on>
+            <sys_id>4d3e88e7831c9f10f22797efeeaad3c1</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:56</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>2</position>
+            <related_list>REL:453e88e7831c9f10f22797efeeaad3c9</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:56</sys_created_on>
+            <sys_id>093e88e7831c9f10f22797efeeaad3cf</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:56</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>3</position>
+            <related_list>REL:053e88e7831c9f10f22797efeeaad3d6</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:56</sys_created_on>
+            <sys_id>c53e88e7831c9f10f22797efeeaad3dc</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:56</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>4</position>
+            <related_list>REL:c13e88e7831c9f10f22797efeeaad3e3</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:57</sys_created_on>
+            <sys_id>853e88e7831c9f10f22797efeeaad3e9</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:57</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>5</position>
+            <related_list>REL:813e88e7831c9f10f22797efeeaad3f0</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:57</sys_created_on>
+            <sys_id>453e88e7831c9f10f22797efeeaad3f6</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:57</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>6</position>
+            <related_list>REL:413e88e7831c9f10f22797efeeaad3fd</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:57</sys_created_on>
+            <sys_id>053ec8e7831c9f10f22797efeeaad303</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:57</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>7</position>
+            <related_list>REL:013ec8e7831c9f10f22797efeeaad30a</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:57</sys_created_on>
+            <sys_id>c13ec8e7831c9f10f22797efeeaad310</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:57</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>8</position>
+            <related_list>REL:cd3ec8e7831c9f10f22797efeeaad316</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:57</sys_created_on>
+            <sys_id>813ec8e7831c9f10f22797efeeaad31d</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:57</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>9</position>
+            <related_list>REL:8d3ec8e7831c9f10f22797efeeaad323</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:57</sys_created_on>
+            <sys_id>513ec8e7831c9f10f22797efeeaad32a</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:57</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>10</position>
+            <related_list>x_2160899_driftw_0_collection_run.instance</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:57</sys_created_on>
+            <sys_id>dd3ec8e7831c9f10f22797efeeaad32a</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:57</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list_entry action="INSERT_OR_UPDATE">
+            <filter/>
+            <group_by_field/>
+            <list_id display_value="SN Instance - Default view" name="x_2160899_driftw_0_cmdb_ci_sn_instance" related_list="NULL" sys_domain="global" view="Default view">fc3e88e7831c9f10f22797efeeaad3a3</list_id>
+            <order_by/>
+            <position>11</position>
+            <related_list>x_2160899_driftw_0_item_change.instance</related_list>
+            <sys_class_name>sys_ui_related_list_entry</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:57</sys_created_on>
+            <sys_id>5d3ec8e7831c9f10f22797efeeaad32b</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:57</sys_updated_on>
+        </sys_ui_related_list_entry>
+        <sys_ui_related_list action="INSERT_OR_UPDATE">
+            <calculated_name>SN Instance - Default view</calculated_name>
+            <filter/>
+            <name>x_2160899_driftw_0_cmdb_ci_sn_instance</name>
+            <order_by/>
+            <position/>
+            <related_list/>
+            <sys_class_name>sys_ui_related_list</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 17:39:56</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_id>fc3e88e7831c9f10f22797efeeaad3a3</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>SN Instance - Default view</sys_name>
+            <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+            <sys_update_name>sys_ui_related_x_2160899_driftw_0_cmdb_ci_sn_instance_null</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 17:39:56</sys_updated_on>
+            <sys_user/>
+            <view display_value="Default view" name="NULL">Default view</view>
+            <view_name/>
+        </sys_ui_related_list>
+    </sys_ui_related>
+</record_update>

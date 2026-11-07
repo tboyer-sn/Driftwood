@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sysauto_script">
+    <sysauto_script action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <advanced>false</advanced>
+        <business_calendar/>
+        <condition/>
+        <conditional>false</conditional>
+        <entered_run_end/>
+        <entered_run_start/>
+        <entered_time/>
+        <max_drift/>
+        <name>Driftwood - Purge history</name>
+        <offset/>
+        <offset_type>0</offset_type>
+        <repeat_every/>
+        <run_as display_value="System Administrator">6816f79cc0a8016401c5a33be04be441</run_as>
+        <run_as_tz/>
+        <run_dayofmonth>1</run_dayofmonth>
+        <run_dayofweek/>
+        <run_daysofweek/>
+        <run_end/>
+        <run_month/>
+        <run_period/>
+        <run_start>2026-11-07 16:55:13</run_start>
+        <run_time>1970-01-01 03:15:00</run_time>
+        <run_type>daily</run_type>
+        <run_weekinmonth/>
+        <script><![CDATA[/**
+ * Scheduled Script Execution: Driftwood - Purge history
+ * Scope:   x_2160899_driftw_0
+ * Run:     Daily, 03:15 (instance time zone)
+ *
+ * Deletes collection runs, item changes and run snapshots older than the
+ * retention period (instance CI "History retention (days)", else
+ * x_2160899_driftw_0.retention_days, default 180). The latest run of each
+ * instance is always kept; current tracked items are never touched.
+ */
+(function () {
+    var res = new ConfigNowRetention().purge();
+    gs.info('[Driftwood] History purge: {0} run(s), {1} change(s), {2} snapshot attachment(s) deleted across {3} instance(s).',
+        res.runs, res.changes, res.attachments, res.instances.length);
+})();
+]]></script>
+        <sys_class_name>sysauto_script</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 16:55:13</sys_created_on>
+        <sys_id>39f384e383d89f10f22797efeeaad355</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>Driftwood - Purge history</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sysauto_script_39f384e383d89f10f22797efeeaad355</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
+        <time_zone/>
+        <upgrade_safe>false</upgrade_safe>
+    </sysauto_script>
+</record_update>

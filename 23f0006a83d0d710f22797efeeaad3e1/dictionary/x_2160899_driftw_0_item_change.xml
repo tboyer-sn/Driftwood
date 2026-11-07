@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="enforce_dot_walk_cross_scope_access=true" db_object_id="c7a304a383d89f10f22797efeeaad3a7" label="Item Change" max_length="40" name="x_2160899_driftw_0_item_change" type="collection">
+        <element label="Source record" max_length="1024" name="source_url" type="url"/>
+        <element label="Run" max_length="32" name="run" reference="x_2160899_driftw_0_collection_run" type="reference"/>
+        <element choice="1" label="Item category" max_length="40" name="item_category" type="string">
+            <choice>
+                <element inactive_on_update="false" label="MID Servers" sequence="30" value="mid_servers"/>
+                <element inactive_on_update="false" label="Tables" sequence="70" value="tables"/>
+                <element inactive_on_update="false" label="Update Sets" sequence="90" value="update_sets"/>
+                <element inactive_on_update="false" label="Plugins" sequence="10" value="plugins"/>
+                <element inactive_on_update="false" label="Clone Exclusions" sequence="60" value="clone_exclusions"/>
+                <element inactive_on_update="false" label="Applications" sequence="20" value="applications"/>
+                <element inactive_on_update="false" label="Clone Preservers" sequence="50" value="clone_preservers"/>
+                <element inactive_on_update="false" label="Columns" sequence="80" value="columns"/>
+                <element inactive_on_update="false" label="System Properties" sequence="40" value="system_properties"/>
+            </choice>
+        </element>
+        <element label="Instance" max_length="32" name="instance" reference="x_2160899_driftw_0_cmdb_ci_sn_instance" type="reference"/>
+        <element choice="1" label="Change" max_length="40" name="change_type" type="string">
+            <choice>
+                <element inactive_on_update="false" label="Added" sequence="10" value="added"/>
+                <element inactive_on_update="false" label="Changed" sequence="20" value="changed"/>
+                <element inactive_on_update="false" label="Restored" sequence="40" value="restored"/>
+                <element inactive_on_update="false" label="No longer present" sequence="30" value="removed"/>
+            </choice>
+        </element>
+        <element label="Changed fields" max_length="1000" name="changed_fields" type="string"/>
+        <element label="Before" max_length="4000" name="old_data" type="string"/>
+        <element label="After" max_length="4000" name="new_data" type="string"/>
+        <element label="Changed on" max_length="40" name="changed_on" type="glide_date_time"/>
+        <element display="true" label="Item name" max_length="255" name="item_name" type="string"/>
+        <element label="Item key" max_length="255" name="item_key" type="string"/>
+        <index name="index">
+            <element name="instance"/>
+        </index>
+        <index name="index2">
+            <element name="run"/>
+        </index>
+    </element>
+</database>

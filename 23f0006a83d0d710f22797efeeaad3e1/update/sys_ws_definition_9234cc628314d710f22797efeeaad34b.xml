@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_definition">
     <sys_ws_definition action="INSERT_OR_UPDATE">
-        <active>true</active>
+        <active>false</active>
         <base_uri>/api/x_2160899_driftw_0/configurationnow</base_uri>
         <consumes>application/json,application/xml,text/xml</consumes>
         <consumes_customized>false</consumes_customized>
@@ -18,13 +18,13 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:22:25</sys_created_on>
         <sys_id>9234cc628314d710f22797efeeaad34b</sys_id>
-        <sys_mod_count>0</sys_mod_count>
+        <sys_mod_count>1</sys_mod_count>
         <sys_name>ConfigurationNOW</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_ws_definition_9234cc628314d710f22797efeeaad34b</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-04 14:22:25</sys_updated_on>
+        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
     </sys_ws_definition>
 </record_update>

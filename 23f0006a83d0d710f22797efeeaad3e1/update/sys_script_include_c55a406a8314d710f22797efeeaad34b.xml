@@ -11,7 +11,7 @@
         <sandbox_callable>false</sandbox_callable>
         <script><![CDATA[/**
  * Script Include: ConfigNowImporter
- * Scope:          x_2160899_driftw_0  (ConfigurationNOW)
+ * Scope:          x_2160899_driftw_0  (Driftwood)
  * Accessible from: This application scope only
  *
  * Loads a snapshot JSON (as downloaded from the Current Instance Settings page
@@ -36,7 +36,8 @@
 var ConfigNowImporter = Class.create();
 ConfigNowImporter.prototype = {
 
-    SUPPORTED_SCHEMAS: { 'configurationnow.snapshot/0.1': true },
+    // configurationnow.snapshot/0.1: files exported before the Driftwood rename (same format)
+    SUPPORTED_SCHEMAS: { 'driftwood.snapshot/0.1': true, 'configurationnow.snapshot/0.1': true },
 
     initialize: function (options) {
         this.options = options || {};
@@ -103,13 +104,13 @@ ConfigNowImporter.prototype = {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:49:05</sys_created_on>
         <sys_id>c55a406a8314d710f22797efeeaad34b</sys_id>
-        <sys_mod_count>1</sys_mod_count>
+        <sys_mod_count>2</sys_mod_count>
         <sys_name>ConfigNowImporter</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_script_include_c55a406a8314d710f22797efeeaad34b</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-04 15:06:44</sys_updated_on>
+        <sys_updated_on>2026-11-07 17:47:41</sys_updated_on>
     </sys_script_include>
 </record_update>

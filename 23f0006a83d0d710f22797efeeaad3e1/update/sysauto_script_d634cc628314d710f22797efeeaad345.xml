@@ -9,7 +9,7 @@
         <entered_run_start/>
         <entered_time/>
         <max_drift/>
-        <name>ConfigurationNOW - Collect current instance</name>
+        <name>Driftwood - Collect current instance</name>
         <offset/>
         <offset_type>0</offset_type>
         <repeat_every/>
@@ -26,26 +26,28 @@
         <run_type>daily</run_type>
         <run_weekinmonth/>
         <script><![CDATA[/**
- * Scheduled Script Execution: ConfigurationNOW - Collect current instance
+ * Scheduled Script Execution: Driftwood - Collect current instance
  * Scope:   x_2160899_driftw_0
  * Run:     Daily, 02:15 (instance time zone)
- * Run as:  ConfigurationNOW collector service account (role x_2160899_driftw_0.collector)
+ * Run as:  Driftwood collector service account (role x_2160899_driftw_0.collector)
  *
  * Collects the current instance's settings and writes them to the CMDB.
  */
 (function () {
-    var collector = new ConfigNowCollector();
+    var collector = new ConfigNowCollector({ incremental: true });
     var snapshot = collector.collect();
     var result = new ConfigNowWriter().persist(snapshot);
 
-    gs.info('[ConfigurationNOW] Collection complete for {0} in {1} ms. totals={2} warnings={3}',
+    gs.info('[Driftwood] Collection complete for {0} in {1} ms. totals={2} warnings={3} run={4} changes={5}',
         snapshot.instance.instance_name,
         snapshot.duration_ms,
         JSON.stringify(result.totals),
-        snapshot.warnings.length);
+        snapshot.warnings.length,
+        result.run_id || '-',
+        result.changes_logged || 0);
 
     for (var i = 0; i < snapshot.warnings.length; i++) {
-        gs.warn('[ConfigurationNOW] {0}: {1}', snapshot.warnings[i].area, snapshot.warnings[i].message);
+        gs.warn('[Driftwood] {0}: {1}', snapshot.warnings[i].area, snapshot.warnings[i].message);
     }
 })();
 ]]></script>
@@ -53,14 +55,14 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:22:25</sys_created_on>
         <sys_id>d634cc628314d710f22797efeeaad345</sys_id>
-        <sys_mod_count>0</sys_mod_count>
-        <sys_name>ConfigurationNOW - Collect current instance</sys_name>
+        <sys_mod_count>3</sys_mod_count>
+        <sys_name>Driftwood - Collect current instance</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sysauto_script_d634cc628314d710f22797efeeaad345</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-04 14:22:25</sys_updated_on>
+        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
         <time_zone/>
         <upgrade_safe>false</upgrade_safe>
     </sysauto_script>

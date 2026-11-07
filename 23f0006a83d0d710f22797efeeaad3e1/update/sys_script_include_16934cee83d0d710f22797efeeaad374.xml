@@ -11,7 +11,7 @@
         <sandbox_callable>false</sandbox_callable>
         <script><![CDATA[/**
  * Script Include: ConfigNowCollector
- * Scope:          x_2160899_driftw_0  (ConfigurationNOW)
+ * Scope:          x_2160899_driftw_0  (Driftwood)
  * Accessible from: This application scope only
  *
  * Reads the CURRENT instance's configuration and returns a plain JSON
@@ -34,7 +34,12 @@ ConfigNowCollector.prototype = {
         this.options = options || {};
         this.config = this.options.config || ConfigNowConfig.get();
         if (this.options.categories) this.config.categories = this.options.categories;
+        // incremental: true lets incremental categories (update_sets) read only
+        // what changed since the last saved run. Writer-driven paths (job,
+        // Collect now) pass it; live reads and the exporter collect everything.
+        this.incremental = !!this.options.incremental;
         this.warnings = [];
+        this._catMeta = {};
     },
 
     /* ------------------------------------------------------------------ */
@@ -44,7 +49,7 @@ ConfigNowCollector.prototype = {
     collect: function () {
         var t0 = new Date().getTime();
         var snapshot = {
-            schema: 'configurationnow.snapshot/0.1',
+            schema: 'driftwood.snapshot/0.1',
             collector_version: ConfigNowConfig.COLLECTOR_VERSION,
             collector_scope: ConfigNowConfig.SCOPE, // lets comparisons ignore the app's own record
             collected_at: String(new GlideDateTime().getValue()), // String(): global scope returns a Java string // UTC
@@ -61,8 +66,14 @@ ConfigNowCollector.prototype = {
                 this._warn(cat, 'Unknown category – skipped');
                 continue;
             }
+            this._collectedAt = snapshot.collected_at;
             var items = this._safe(cat, this[fn], []);
+            for (var s = 0; s < items.length; s++) {
+                if (!items[s].source_table) items[s].source_table = this._sourceTable(cat, items[s]);
+            }
             snapshot.categories[cat] = { count: items.length, items: items };
+            var meta = this._catMeta[cat];
+            if (meta) for (var mk in meta) snapshot.categories[cat][mk] = meta[mk];
         }
         snapshot.duration_ms = new Date().getTime() - t0;
         return snapshot;
@@ -75,7 +86,22 @@ ConfigNowCollector.prototype = {
         system_properties: 'collectSystemProperties',
         clone_preservers: 'collectClonePreservers',
         clone_exclusions: 'collectCloneExclusions',
-        tables: 'collectTables'
+        tables: 'collectTables',
+        columns: 'collectColumns',
+        update_sets: 'collectUpdateSets'
+    },
+
+    /** Table holding each item's source record (for links and sys_id drift). */
+    SOURCE_TABLES: {
+        plugins: 'sys_plugins', mid_servers: 'ecc_agent', system_properties: 'sys_properties',
+        clone_preservers: 'clone_data_preserver', clone_exclusions: 'clone_data_exclude',
+        tables: 'sys_db_object', columns: 'sys_dictionary'
+    },
+
+    _sourceTable: function (cat, item) {
+        if (!item.source_sys_id) return '';
+        if (cat == 'applications') return item.attributes && item.attributes.source == 'custom' ? 'sys_app' : 'sys_store_app';
+        return this.SOURCE_TABLES[cat] || '';
     },
 
     /* ------------------------------------------------------------------ */
@@ -316,15 +342,24 @@ ConfigNowCollector.prototype = {
     /**
      * Table configuration drift: one item per tracked table with
      *   attributes.total        – row count (includes rows of extending tables)
-     *   attributes.customer     – rows in the global package or an x_ app
-     *                             (metadata tables only; null otherwise)
+     *   attributes.customer_scoped – rows in an x_ app scope other than this
+     *                             app's (exact; metadata tables only, else null)
+     *   attributes.customer_global – Global-package rows not created by platform
+     *                             or ServiceNow accounts (estimate; same rule)
+     *   attributes.customer_updates – rows whose current version came from a
+     *                             customer update set (only if customerHistory)
      *   attributes.column_count / parent / fingerprint – schema of the table's
      *                             own columns (name:type:length, sorted)
+     *   attributes.<definition> – the sys_db_object settings (scope, package,
+     *                             extensible, application access, ...), v0.4+
+     *   attributes.clone_exclusion_rules / clone_preserver_rules – active clone
+     *                             rules naming this table, v0.4+
      *   runtime.columns         – the column list itself (for drill-in, not hashed)
      * A tracked table that doesn't exist here is reported with state 'absent'.
      */
     collectTables: function () {
-        var list = this._tableList();
+        var list = this._trackedTables();
+        var clone = this._cloneRules();
         var items = [];
         for (var i = 0; i < list.length; i++) {
             var t = list[i];
@@ -335,18 +370,22 @@ ConfigNowCollector.prototype = {
             }
             try {
                 var total = this._count(t.name, '');
-                var customer = null;
-                if (gr.isValidField('sys_package') && gr.isValidField('sys_scope')) customer = this._count(t.name, this.config.customerQuery);
+                var cust = this._customerCounts(t.name, gr);
                 var schema = this._schema(t.name);
                 var colStr = schema.columns.join(',');
                 var attrs = {
                     source: t.source,
                     total: total,
-                    customer: customer,
+                    customer_scoped: cust.scoped,
+                    customer_global: cust.global_est,
                     column_count: schema.columns.length,
                     parent: schema.parent,
-                    fingerprint: this._hash(schema.parent + '|' + colStr).substring(0, 16)
+                    fingerprint: this._hash(schema.parent + '|' + colStr).substring(0, 16),
+                    clone_exclusion_rules: clone.exclusions[t.name] || 0,
+                    clone_preserver_rules: clone.preservers[t.name] || 0
                 };
+                if (this.config.customerHistory) attrs.customer_updates = cust.updates;
+                for (var d in schema.definition) attrs[d] = schema.definition[d];
                 var rt = { columns: colStr.length > 3900 ? colStr.substring(0, 3900) : colStr };
                 if (colStr.length > 3900) rt.columns_truncated = true;
                 items.push(this._item('tables', t.name, schema.label || t.name, '', '', 'present', attrs, rt, schema.sys_id));
@@ -355,6 +394,347 @@ ConfigNowCollector.prototype = {
             }
         }
         return items;
+    },
+
+    /**
+     * Column definitions: one item per sys_dictionary entry of each tracked
+     * table (the table's own columns; inherited ones belong to the parent).
+     * key = <table>.<column>; the label is the item name (not compared, since
+     * labels are translated); the definition is in attributes.
+     */
+    collectColumns: function () {
+        var list = this._trackedTables();
+        var items = [];
+        for (var i = 0; i < list.length; i++) {
+            var t = list[i];
+            if (!new GlideRecord(t.name).isValid()) continue;
+            try {
+                var schema = this._schema(t.name);
+                for (var c = 0; c < schema.dictionary.length; c++) {
+                    var col = schema.dictionary[c];
+                    items.push(this._item('columns', t.name + '.' + col.element, col.label || col.element, '', '',
+                        col.attributes.active === false ? 'inactive' : 'present', col.attributes, {}, col.sys_id));
+                }
+            } catch (e) {
+                this._warn('columns', t.name + ': ' + (e && e.message ? e.message : e));
+            }
+        }
+        return items;
+    },
+
+    /**
+     * Customer counts for a metadata table (one with sys_package and sys_scope);
+     * all null for data tables. scoped is exact; global_est is a heuristic.
+     */
+    _customerCounts: function (table, gr) {
+        var res = { scoped: null, global_est: null, updates: null };
+        if (!(gr.isValidField('sys_package') && gr.isValidField('sys_scope'))) return res;
+        res.scoped = this._count(table, this.config.customerScopedQuery + '^sys_scope.scope!=' + ConfigNowConfig.SCOPE);
+        res.global_est = this._count(table, this.config.customerGlobalQuery);
+        if (this.config.customerHistory) res.updates = this._historyCount(table);
+        return res;
+    },
+
+    /**
+     * Option 2: records of `table` whose CURRENT version came from a customer
+     * update set. Update names are "<table>_<id or key>", so names of longer
+     * tables sharing the prefix (sys_script_include_... for sys_script) are
+     * excluded explicitly. Returns null if sys_update_version isn't readable.
+     */
+    _historyCount: function (table) {
+        if (!new GlideRecord('sys_update_version').isValid()) return null;
+        var q = 'nameSTARTSWITH' + table + '_^state=current^source_tableIN' + this.config.customerHistorySources.join(',');
+        var sib = this._prefixSiblings(table);
+        for (var i = 0; i < sib.length; i++) q += '^nameNOT LIKE' + sib[i] + '_';
+        return this._count('sys_update_version', q);
+    },
+
+    /** Other tables whose name starts with "<table>_" (their update names share the prefix). */
+    _prefixSiblings: function (table) {
+        var out = [];
+        var db = new GlideRecord('sys_db_object');
+        db.addQuery('name', 'STARTSWITH', table + '_');
+        db.query();
+        while (db.next()) out.push(String(db.getValue('name')));
+        return out;
+    },
+
+    /* ------------------------------------------------------------------ */
+    /* Update sets (v0.5)                                                  */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * One item per ORIGINATING update set:
+     *   key 'origin:<sys_id of the set where it was built>' – the same on the
+     *       instance that built it (local set) and on every instance it was
+     *       retrieved into (remote set's origin_sys_id), so promotion lines up;
+     *   key 'default:<scope>' for each application's Default set.
+     * A local set created by committing a retrieved set is folded into that
+     * retrieved set's item (local_state + local update_count).
+     * item.state = local state when there is a local set, else the retrieved
+     * set's state (loaded / previewed / ...), so "complete on Dev, previewed on
+     * Test" shows as a difference and "complete / committed" does not.
+     */
+    collectUpdateSets: function () {
+        var L = 'sys_update_set', RM = 'sys_remote_update_set';
+        if (!new GlideRecord(L).isValid()) { this._warn('update_sets', 'sys_update_set not readable from this scope'); return []; }
+        var hasRemote = new GlideRecord(RM).isValid();
+        var plan = this._updateSetPlan();
+        this._catMeta.update_sets = {
+            incremental: !plan.full,
+            watermark: { since: this._collectedAt, full: plan.full ? this._collectedAt : plan.lastFull }
+        };
+
+        var locals = {}, remotes = {}, id;
+        var addAll = function (map, rows) { for (var i = 0; i < rows.length; i++) map[rows[i].sys_id] = rows[i]; };
+        if (plan.full) {
+            addAll(locals, this._usRows(L, null));
+            if (hasRemote) addAll(remotes, this._usRows(RM, null));
+        } else {
+            addAll(locals, this._usRows(L, { since: plan.since }));
+            addAll(locals, this._usRows(L, { open: true }));
+            if (hasRemote) addAll(remotes, this._usRows(RM, { since: plan.since }));
+            // counterparts: retrieved sets whose committed copy changed, and copies of changed retrieved sets
+            if (hasRemote) {
+                var lids = []; for (id in locals) lids.push(id);
+                addAll(remotes, this._usRows(RM, { field: 'update_set', ids: lids }));
+            }
+            var need = [];
+            for (id in remotes) if (remotes[id].update_set && !locals[remotes[id].update_set]) need.push(remotes[id].update_set);
+            addAll(locals, this._usRows(L, { field: 'sys_id', ids: need }));
+        }
+
+        var localIds = [], remoteIds = [];
+        for (id in locals) localIds.push(id);
+        for (id in remotes) remoteIds.push(id);
+        var lCount = this._groupCount('sys_update_xml', 'update_set', plan.full ? null : localIds);
+        var rCount = hasRemote ? this._groupCount('sys_update_xml', 'remote_update_set', plan.full ? null : remoteIds) : {};
+        var problems = hasRemote ? this._previewProblems(plan.full ? null : remoteIds) : {};
+
+        var items = [], consumed = {}, r, l;
+        for (id in remotes) {
+            r = remotes[id];
+            l = r.update_set ? locals[r.update_set] : null;
+            if (l) consumed[l.sys_id] = true;
+            items.push(this._usItem(l, r, lCount, rCount, problems));
+        }
+        for (id in locals) if (!consumed[id]) items.push(this._usItem(locals[id], null, lCount, rCount, problems));
+        items.sort(function (a, b) { return a.key < b.key ? -1 : (a.key > b.key ? 1 : 0); });
+        return items;
+    },
+
+    _usItem: function (l, r, lCount, rCount, problems) {
+        var attrs = {}, rt = {}, key;
+        var base = l || r;
+        attrs.application = base.application || '';
+        if (l) {
+            attrs.local_state = l.state;
+            attrs.update_count = lCount[l.sys_id] || 0;
+            if (l.is_default !== undefined) attrs.is_default = l.is_default;
+            if (l.parent !== undefined) attrs.parent = l.parent;
+            if (l.base_update_set !== undefined) attrs.base_update_set = l.base_update_set;
+            rt.local_sys_id = l.sys_id; rt.created_by = l.sys_created_by; rt.created_on = l.sys_created_on; rt.updated_on = l.sys_updated_on;
+            if (l.release_date) rt.release_date = l.release_date;
+        }
+        if (r) {
+            attrs.remote_state = r.state;
+            attrs.remote_update_count = rCount[r.sys_id] || 0;
+            var p = problems[r.sys_id] || { errors: 0, warnings: 0, unresolved: 0 };
+            attrs.preview_errors = p.errors; attrs.preview_warnings = p.warnings; attrs.preview_unresolved = p.unresolved;
+            if (!l && r.parent !== undefined) attrs.parent = r.parent;
+            rt.remote_sys_id = r.sys_id; rt.retrieved_on = r.sys_created_on;
+            if (r.commit_date) rt.committed_on = r.commit_date;
+            if (r.remote_sys_id) rt.remote_source_sys_id = r.remote_sys_id;
+        }
+        rt.origin = l && !r ? 'built here' : 'retrieved';
+        if (l && !r && (l.is_default === true)) key = 'default:' + (l.application || 'global');
+        else key = 'origin:' + ((r && r.origin_sys_id) || (l && l.origin_sys_id) || (r ? r.sys_id : l.sys_id));
+        var state = l ? l.state : r.state;
+        var item = this._item('update_sets', key, base.name, '', '', state, attrs, rt, base.sys_id);
+        item.source_table = l ? 'sys_update_set' : 'sys_remote_update_set';
+        return item;
+    },
+
+    /* field spec for sys_update_set / sys_remote_update_set: [out, field, kind] */
+    US_FIELDS: [
+        ['name', 'name', 'str'], ['state', 'state', 'str'], ['application', 'application', 'scope'],
+        ['application_name', 'application_name', 'str'], ['is_default', 'is_default', 'bool'],
+        ['parent', 'parent', 'refname'], ['base_update_set', 'base_update_set', 'refname'],
+        ['origin_sys_id', 'origin_sys_id', 'str'], ['remote_sys_id', 'remote_sys_id', 'str'],
+        ['update_set', 'update_set', 'str'], ['commit_date', 'commit_date', 'str'], ['release_date', 'release_date', 'str'],
+        ['sys_created_by', 'sys_created_by', 'str'], ['sys_created_on', 'sys_created_on', 'str'], ['sys_updated_on', 'sys_updated_on', 'str']
+    ],
+
+    /**
+     * Reads update set rows. sel: null = all; {since} = updated since;
+     * {open: true} = local sets in progress; {field, ids} = these records.
+     */
+    _usRows: function (table, sel) {
+        var rows = [];
+        if (sel && sel.ids) {
+            for (var c = 0; c < sel.ids.length; c += 100) {
+                var chunk = sel.ids.slice(c, c + 100);
+                if (!chunk.length) continue;
+                rows = rows.concat(this._usQuery(table, function (gr) { gr.addQuery(sel.field, 'IN', chunk.join(',')); }));
+            }
+            return rows;
+        }
+        return this._usQuery(table, function (gr) {
+            if (sel && sel.since) gr.addQuery('sys_updated_on', '>=', sel.since);
+            if (sel && sel.open) gr.addQuery('state', 'in progress');
+        });
+    },
+
+    _usQuery: function (table, filter) {
+        var gr = new GlideRecord(table);
+        filter(gr);
+        gr.setLimit(this.config.maxUpdateSets + 1);
+        gr.query();
+        var rows = [], n = 0, spec = this.US_FIELDS;
+        while (gr.next()) {
+            if (++n > this.config.maxUpdateSets) { this._warn('update_sets', table + ': more than ' + this.config.maxUpdateSets + ' rows – the rest were skipped'); break; }
+            var row = { sys_id: gr.getUniqueValue() };
+            for (var i = 0; i < spec.length; i++) {
+                var f = spec[i][1];
+                if (!gr.isValidField(f)) continue;
+                var v = gr.getValue(f);
+                v = v == null ? '' : String(v);
+                if (spec[i][2] == 'bool') row[spec[i][0]] = (v == '1' || v == 'true');
+                else if (spec[i][2] == 'scope') row[spec[i][0]] = v ? this._refField('sys_scope', v, 'scope') : '';
+                else if (spec[i][2] == 'refname') row[spec[i][0]] = v ? this._refField(table, v, 'name') : '';
+                else row[spec[i][0]] = v;
+            }
+            if (!row.application && row.application_name) row.application = row.application_name;
+            delete row.application_name;
+            rows.push(row);
+        }
+        return rows;
+    },
+
+    /** COUNT grouped by `field` (optionally only for these ids): { id: count }. */
+    _groupCount: function (table, field, ids) {
+        var out = {};
+        if (!new GlideRecord(table).isValid()) return out;
+        var run = function (chunk) {
+            var ga = new GlideAggregate(table);
+            if (!ga.isValidField(field)) return;
+            if (chunk) ga.addQuery(field, 'IN', chunk.join(','));
+            else ga.addQuery(field, '!=', '');
+            ga.addAggregate('COUNT');
+            ga.groupBy(field);
+            ga.query();
+            while (ga.next()) out[String(ga.getValue(field))] = parseInt(ga.getAggregate('COUNT'), 10);
+        };
+        if (!ids) { run(null); return out; }
+        for (var c = 0; c < ids.length; c += 100) if (ids.slice(c, c + 100).length) run(ids.slice(c, c + 100));
+        return out;
+    },
+
+    /** Preview problems per retrieved set: { id: {errors, warnings, unresolved} }. */
+    _previewProblems: function (ids) {
+        var out = {}, T = 'sys_update_preview_problem';
+        var gr = new GlideRecord(T);
+        if (!gr.isValid() || !gr.isValidField('remote_update_set')) return out;
+        var hasType = gr.isValidField('type'), hasStatus = gr.isValidField('status');
+        var run = function (chunk) {
+            var ga = new GlideAggregate(T);
+            if (chunk) ga.addQuery('remote_update_set', 'IN', chunk.join(','));
+            else ga.addQuery('remote_update_set', '!=', '');
+            ga.addAggregate('COUNT');
+            ga.groupBy('remote_update_set');
+            if (hasType) ga.groupBy('type');
+            if (hasStatus) ga.groupBy('status');
+            ga.query();
+            while (ga.next()) {
+                var id = String(ga.getValue('remote_update_set')), n = parseInt(ga.getAggregate('COUNT'), 10);
+                var o = out[id] || (out[id] = { errors: 0, warnings: 0, unresolved: 0 });
+                var type = hasType ? String(ga.getValue('type') || '') : 'error';
+                if (type == 'error') o.errors += n; else o.warnings += n;
+                if (!hasStatus || !ga.getValue('status')) o.unresolved += n;
+            }
+        };
+        if (!ids) { run(null); return out; }
+        for (var c = 0; c < ids.length; c += 100) if (ids.slice(c, c + 100).length) run(ids.slice(c, c + 100));
+        return out;
+    },
+
+    /**
+     * Full or incremental? Incremental only when asked (this.incremental), a
+     * previous local run of this instance recorded an update_sets watermark,
+     * and its last full sweep is younger than updateSetsFullDays.
+     */
+    _updateSetPlan: function () {
+        var plan = { full: true, since: '', lastFull: '' };
+        if (!this.incremental) return plan;
+        var T = this.config.tables;
+        if (!T.run || !new GlideRecord(T.run).isValid()) return plan;
+        var inst = new GlideRecord(T.instance);
+        if (!inst.isValid()) return plan;
+        inst.addQuery('instance_name', this._prop('instance_name'));
+        inst.setLimit(1);
+        inst.query();
+        if (!inst.next()) return plan;
+        var run = new GlideRecord(T.run);
+        run.addQuery('instance', inst.getUniqueValue());
+        run.addQuery('source', 'local');
+        run.orderByDesc('collected_at');
+        run.setLimit(10);
+        run.query();
+        while (run.next()) {
+            var wm = null;
+            try { wm = JSON.parse(run.getValue('watermarks') || '{}').update_sets; } catch (e) { wm = null; }
+            if (!wm || !wm.since || !wm.full) continue;
+            var age = (this._toMs(this._collectedAt) - this._toMs(wm.full)) / 86400000;
+            if (!(age < this.config.updateSetsFullDays)) return plan; // time for a full sweep
+            plan.full = false;
+            plan.since = this._shiftTime(wm.since, -this.config.updateSetsOverlapMinutes);
+            plan.lastFull = wm.full;
+            return plan;
+        }
+        return plan;
+    },
+
+    /** 'YYYY-MM-DD HH:MM:SS' (UTC) <-> epoch ms, without GlideDateTime. */
+    _toMs: function (ts) {
+        var m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(String(ts || ''));
+        return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : NaN;
+    },
+
+    _shiftTime: function (ts, minutes) {
+        var ms = this._toMs(ts);
+        if (isNaN(ms)) return ts;
+        var d = new Date(ms + minutes * 60000);
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()) + ' ' +
+            p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':' + p(d.getUTCSeconds());
+    },
+
+    /** Tracked table list, computed once per collection (tables + columns share it). */
+    _trackedTables: function () {
+        if (!this._tableListCache) this._tableListCache = this._tableList();
+        return this._tableListCache;
+    },
+
+    /** Active clone exclusion / preserver rules per table name. */
+    _cloneRules: function () {
+        var res = { exclusions: {}, preservers: {} };
+        var specs = [['clone_data_exclude', 'exclusions'], ['clone_data_preserver', 'preservers']];
+        for (var s = 0; s < specs.length; s++) {
+            if (!new GlideRecord(specs[s][0]).isValid()) continue;
+            var rows = this._rows(specs[s][0], {
+                fields: { table: ['table', 'table_name'], active: ['active'] },
+                optional: { table: true, active: true },
+                orderBy: null,
+                label: 'tables'
+            });
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                if (!r.table || r.active == 'false' || r.active == '0') continue;
+                var m = res[specs[s][1]];
+                m[r.table] = (m[r.table] || 0) + 1;
+            }
+        }
+        return res;
     },
 
     _tableList: function () {
@@ -414,8 +794,37 @@ ConfigNowCollector.prototype = {
         return ga.next() ? parseInt(ga.getAggregate('COUNT'), 10) : 0;
     },
 
+    /* sys_db_object fields reported per table: [attribute, field, kind] */
+    TABLE_FIELDS: [
+        ['scope', 'sys_scope', 'scope'], ['package', 'sys_package', 'display'],
+        ['extensible', 'is_extendable', 'bool'], ['extension_model', 'extension_model', 'str'],
+        ['accessible_from', 'access', 'str'], ['caller_access', 'caller_access', 'str'],
+        ['can_read', 'read_access', 'bool'], ['can_create', 'create_access', 'bool'],
+        ['can_update', 'update_access', 'bool'], ['can_delete', 'delete_access', 'bool'],
+        ['web_service_access', 'ws_access', 'bool'], ['allow_configuration', 'configuration_access', 'bool'],
+        ['allow_new_fields', 'alter_access', 'bool'], ['create_access_controls', 'create_access_controls', 'bool'],
+        ['live_feed', 'live_feed_enabled', 'bool'], ['remote_table', 'scriptable_table', 'bool'],
+        ['auto_number', 'number_ref', 'present'], ['user_role', 'user_role', 'display']
+    ],
+
+    /* sys_dictionary fields reported per column: [attribute, field, kind] */
+    COLUMN_FIELDS: [
+        ['type', 'internal_type', 'str'], ['max_length', 'max_length', 'str'], ['reference', 'reference', 'str'],
+        ['mandatory', 'mandatory', 'bool'], ['read_only', 'read_only', 'bool'], ['unique', 'unique', 'bool'],
+        ['active', 'active', 'bool'], ['display', 'display', 'bool'], ['calculated', 'virtual', 'bool'],
+        ['function_field', 'function_field', 'bool'], ['choice', 'choice', 'str'], ['dependent', 'dependent', 'str'],
+        ['default_value', 'default_value', 'long'], ['dictionary_attributes', 'attributes', 'long'],
+        ['scope', 'sys_scope', 'scope']
+    ],
+
+    /**
+     * Schema of one table, read once per collection: label, parent, the
+     * fingerprint column list, the table definition and full column records.
+     */
     _schema: function (table) {
-        var res = { sys_id: '', label: '', parent: '', columns: [] };
+        if (!this._schemaCache) this._schemaCache = {};
+        if (this._schemaCache[table]) return this._schemaCache[table];
+        var res = { sys_id: '', label: '', parent: '', columns: [], definition: {}, dictionary: [] };
         var o = new GlideRecord('sys_db_object');
         o.addQuery('name', table);
         o.setLimit(1);
@@ -423,7 +832,9 @@ ConfigNowCollector.prototype = {
         if (o.next()) {
             res.sys_id = o.getUniqueValue();
             res.label = o.getValue('label') || '';
-            res.parent = o.super_class && !o.super_class.nil() ? String(o.super_class.getRefRecord().getValue('name') || '') : '';
+            var sc = o.getValue('super_class');
+            res.parent = sc ? this._refField('sys_db_object', sc, 'name') : '';
+            res.definition = this._fieldSet(o, this.TABLE_FIELDS);
         }
         var d = new GlideRecord('sys_dictionary');
         d.addQuery('name', table);
@@ -433,9 +844,59 @@ ConfigNowCollector.prototype = {
             var el = d.getValue('element');
             if (!el) continue;
             res.columns.push(el + ':' + (d.getValue('internal_type') || '') + ':' + (d.getValue('max_length') || ''));
+            var attrs = this._fieldSet(d, this.COLUMN_FIELDS);
+            attrs.table = table;
+            res.dictionary.push({
+                element: el,
+                sys_id: d.getUniqueValue(),
+                label: d.isValidField('column_label') ? String(d.getValue('column_label') || '') : '',
+                attributes: attrs
+            });
         }
         res.columns.sort();
+        res.dictionary.sort(function (a, b) { return a.element < b.element ? -1 : (a.element > b.element ? 1 : 0); });
+        this._schemaCache[table] = res;
         return res;
+    },
+
+    /**
+     * Reads the listed fields of the current record into a plain object.
+     * Fields this release doesn't have are left out (not reported as drift).
+     * Reference values are converted to names so they compare across instances.
+     */
+    _fieldSet: function (gr, spec) {
+        var out = {};
+        for (var i = 0; i < spec.length; i++) {
+            var attr = spec[i][0], f = spec[i][1], kind = spec[i][2];
+            if (!gr.isValidField(f)) continue;
+            var v = gr.getValue(f);
+            v = v == null ? '' : String(v);
+            if (kind == 'bool') out[attr] = (v == '1' || v == 'true');
+            else if (kind == 'present') out[attr] = v !== '';
+            else if (kind == 'scope') out[attr] = v ? this._refField('sys_scope', v, 'scope') : '';
+            else if (kind == 'display') out[attr] = v ? String(gr.getDisplayValue(f) || '') : '';
+            else if (kind == 'long') out[attr] = this._clipLong(v);
+            else out[attr] = v;
+        }
+        return out;
+    },
+
+    /** Long text (scripts, attribute strings): keep it comparable but bounded. */
+    _clipLong: function (v) {
+        if (v.length <= 500) return v;
+        return v.substring(0, 200) + ' ...[' + v.length + ' chars, sha256 ' + this._hash(v).substring(0, 16) + ']';
+    },
+
+    /** One field of a referenced record, cached (scope names, parent table names). */
+    _refField: function (table, sysId, field) {
+        if (!this._refCache) this._refCache = {};
+        var k = table + '|' + sysId + '|' + field;
+        if (this._refCache.hasOwnProperty(k)) return this._refCache[k];
+        var v = '';
+        var gr = new GlideRecord(table);
+        if (gr.isValid() && gr.get(sysId)) v = String(gr.getValue(field) || '');
+        this._refCache[k] = v;
+        return v;
     },
 
     /* ------------------------------------------------------------------ */
@@ -604,13 +1065,13 @@ ConfigNowCollector.prototype = {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:19:41</sys_created_on>
         <sys_id>16934cee83d0d710f22797efeeaad374</sys_id>
-        <sys_mod_count>2</sys_mod_count>
+        <sys_mod_count>5</sys_mod_count>
         <sys_name>ConfigNowCollector</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_script_include_16934cee83d0d710f22797efeeaad374</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-04 15:58:54</sys_updated_on>
+        <sys_updated_on>2026-11-07 17:47:40</sys_updated_on>
     </sys_script_include>
 </record_update>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_ui_list parent="" relationship="" sys_domain="global" table="x_2160899_driftw_0_cmdb_ci_sn_instance" version="2" view="">
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>name</element>
+            <list_id display_value="x_2160899_driftw_0_cmdb_ci_sn_instance" element="NULL" name="x_2160899_driftw_0_cmdb_ci_sn_instance" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">99451467835c9f10f22797efeeaad375</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>0</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>dd451467835c9f10f22797efeeaad376</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>environment</element>
+            <list_id display_value="x_2160899_driftw_0_cmdb_ci_sn_instance" element="NULL" name="x_2160899_driftw_0_cmdb_ci_sn_instance" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">99451467835c9f10f22797efeeaad375</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>1</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>59451467835c9f10f22797efeeaad377</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>family</element>
+            <list_id display_value="x_2160899_driftw_0_cmdb_ci_sn_instance" element="NULL" name="x_2160899_driftw_0_cmdb_ci_sn_instance" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">99451467835c9f10f22797efeeaad375</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>2</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>d1451467835c9f10f22797efeeaad378</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>patch</element>
+            <list_id display_value="x_2160899_driftw_0_cmdb_ci_sn_instance" element="NULL" name="x_2160899_driftw_0_cmdb_ci_sn_instance" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">99451467835c9f10f22797efeeaad375</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>3</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>5d451467835c9f10f22797efeeaad378</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>last_collected</element>
+            <list_id display_value="x_2160899_driftw_0_cmdb_ci_sn_instance" element="NULL" name="x_2160899_driftw_0_cmdb_ci_sn_instance" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">99451467835c9f10f22797efeeaad375</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>4</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>d5451467835c9f10f22797efeeaad379</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>collection_status</element>
+            <list_id display_value="x_2160899_driftw_0_cmdb_ci_sn_instance" element="NULL" name="x_2160899_driftw_0_cmdb_ci_sn_instance" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">99451467835c9f10f22797efeeaad375</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>5</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>51451467835c9f10f22797efeeaad37a</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>node_count</element>
+            <list_id display_value="x_2160899_driftw_0_cmdb_ci_sn_instance" element="NULL" name="x_2160899_driftw_0_cmdb_ci_sn_instance" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">99451467835c9f10f22797efeeaad375</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>6</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>d9451467835c9f10f22797efeeaad37a</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element/>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <name>x_2160899_driftw_0_cmdb_ci_sn_instance</name>
+            <parent/>
+            <position/>
+            <relationship/>
+            <sum>false</sum>
+            <sys_class_name>sys_ui_list</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_id>99451467835c9f10f22797efeeaad375</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>x_2160899_driftw_0_cmdb_ci_sn_instance</sys_name>
+            <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+            <sys_update_name>sys_ui_list_x_2160899_driftw_0_cmdb_ci_sn_instance_null</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+            <sys_user/>
+            <view display_value="Default view" name="NULL">Default view</view>
+            <view_name/>
+        </sys_ui_list>
+    </sys_ui_list>
+</record_update>

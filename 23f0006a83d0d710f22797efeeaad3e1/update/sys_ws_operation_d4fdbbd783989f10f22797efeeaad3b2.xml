@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_operation">
+    <sys_ws_operation action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_operation_uri/>
+        <enforce_acl/>
+        <http_method>POST</http_method>
+        <name>collect</name>
+        <operation_script><![CDATA[/**
+ * Scripted REST resource: POST /collect
+ * Collects this instance's configuration and saves it (same as the Collect now
+ * UI action on the instance CI). Used by the Current Instance Settings page.
+ * Requires x_2160899_driftw_0.configuration_admin (checked here as well).
+ */
+(function process(request, response) {
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_admin')) {
+        response.setStatus(403);
+        response.setBody({ error: 'Requires role x_2160899_driftw_0.configuration_admin' });
+        return;
+    }
+    try {
+        var snapshot = new ConfigNowCollector({ incremental: true }).collect();
+        var res = new ConfigNowWriter().persist(snapshot);
+        response.setStatus(200);
+        response.setBody({
+            instance_name: snapshot.instance ? snapshot.instance.instance_name : '',
+            collected_at: snapshot.collected_at,
+            duration_ms: snapshot.duration_ms,
+            totals: res.totals,
+            run_id: res.run_id || '',
+            changes_logged: res.changes_logged || 0,
+            baseline: res.baseline || [],
+            warnings: snapshot.warnings ? snapshot.warnings.length : 0
+        });
+    } catch (e) {
+        response.setStatus(500);
+        response.setBody({ error: String(e && e.message ? e.message : e) });
+    }
+})(request, response);
+]]></operation_script>
+        <operation_uri>/api/x_2160899_driftw_0/configurationnow/collect</operation_uri>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <relative_path>/collect</relative_path>
+        <request_example/>
+        <requires_acl_authorization>false</requires_acl_authorization>
+        <requires_authentication>true</requires_authentication>
+        <requires_snc_internal_role>true</requires_snc_internal_role>
+        <short_description/>
+        <support_trailing_slash>false</support_trailing_slash>
+        <sys_class_name>sys_ws_operation</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 16:28:54</sys_created_on>
+        <sys_id>d4fdbbd783989f10f22797efeeaad3b2</sys_id>
+        <sys_mod_count>1</sys_mod_count>
+        <sys_name>collect</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_ws_operation_d4fdbbd783989f10f22797efeeaad3b2</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 16:55:13</sys_updated_on>
+        <web_service_definition display_value="ConfigurationNOW">9234cc628314d710f22797efeeaad34b</web_service_definition>
+        <web_service_version/>
+    </sys_ws_operation>
+</record_update>

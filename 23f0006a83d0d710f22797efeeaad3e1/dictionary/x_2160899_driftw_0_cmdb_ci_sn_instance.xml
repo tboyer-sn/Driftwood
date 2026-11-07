@@ -9,6 +9,7 @@
         <element label="Timezone" max_length="255" name="timezone" type="string"/>
         <element label="Instance URL" max_length="255" name="instance_url" type="string"/>
         <element label="Family" max_length="255" name="family" type="string"/>
+        <element label="History retention (days)" max_length="40" name="retention_days" type="integer"/>
         <element label="Production flag" max_length="40" name="production_flag" type="boolean"/>
         <element label="Last collected" max_length="40" name="last_collected" type="glide_date_time"/>
         <element choice="1" label="Collection status" max_length="40" name="collection_status" type="string">

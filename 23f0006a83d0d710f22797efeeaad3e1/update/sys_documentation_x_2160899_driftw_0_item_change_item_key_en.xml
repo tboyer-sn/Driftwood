@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_documentation element="item_key" label="Item key" language="en" table="x_2160899_driftw_0_item_change">
+        <sys_documentation action="INSERT_OR_UPDATE">
+            <element>item_key</element>
+            <help/>
+            <hint/>
+            <label>Item key</label>
+            <language>en</language>
+            <name>x_2160899_driftw_0_item_change</name>
+            <plural>Item keys</plural>
+            <sys_class_name>sys_documentation</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 16:54:06</sys_created_on>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>Item key</sys_name>
+            <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+            <sys_update_name>sys_documentation_x_2160899_driftw_0_item_change_item_key_en</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 16:54:06</sys_updated_on>
+            <url/>
+            <url_target/>
+        </sys_documentation>
+    </sys_documentation>
+</record_update>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_operation">
+    <sys_ws_operation action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_operation_uri/>
+        <enforce_acl/>
+        <http_method>GET</http_method>
+        <name>compare</name>
+        <operation_script><![CDATA[/**
+ * Scripted REST resource: GET /compare?a=<instance>&b=<instance>[&categories=plugins,applications][&sys_ids=true]
+ * a / b: instance CI sys_id or instance_name. Returns the drift result
+ * (schema driftwood.compare/0.1). Read-only.
+ * Requires x_2160899_driftw_0.configuration_read (checked here as well).
+ */
+(function process(request, response) {
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_read')) {
+        response.setStatus(403);
+        response.setBody({ error: 'Requires role x_2160899_driftw_0.configuration_read' });
+        return;
+    }
+    var q = request.queryParams;
+    var a = q.a ? String(q.a[0]) : '', b = q.b ? String(q.b[0]) : '';
+    if (!a || !b) {
+        response.setStatus(400);
+        response.setBody({ error: 'Query parameters a and b (instance name or sys_id) are required' });
+        return;
+    }
+    var opts = {};
+    if (q.categories && q.categories.length) opts.categories = String(q.categories[0]).split(',');
+    if (q.sys_ids && q.sys_ids.length) opts.sysIds = String(q.sys_ids[0]) == 'true';
+    try {
+        var result = new ConfigNowCompare().compare(a, b, opts);
+        response.setStatus(200);
+        response.setHeader('Cache-Control', 'no-store');
+        response.setBody(result);
+    } catch (e) {
+        var msg = String(e && e.message ? e.message : e);
+        response.setStatus(msg.indexOf('Instance not found') == 0 ? 404 : 500);
+        response.setBody({ error: msg });
+    }
+})(request, response);
+]]></operation_script>
+        <operation_uri>/api/x_2160899_driftw_0/driftwood/compare</operation_uri>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <relative_path>/compare</relative_path>
+        <request_example/>
+        <requires_acl_authorization>false</requires_acl_authorization>
+        <requires_authentication>true</requires_authentication>
+        <requires_snc_internal_role>true</requires_snc_internal_role>
+        <short_description/>
+        <support_trailing_slash>false</support_trailing_slash>
+        <sys_class_name>sys_ws_operation</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 17:48:20</sys_created_on>
+        <sys_id>482054eb831c9f10f22797efeeaad344</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>compare</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_ws_operation_482054eb831c9f10f22797efeeaad344</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
+        <web_service_definition display_value="Driftwood">442054eb831c9f10f22797efeeaad330</web_service_definition>
+        <web_service_version/>
+    </sys_ws_operation>
+</record_update>

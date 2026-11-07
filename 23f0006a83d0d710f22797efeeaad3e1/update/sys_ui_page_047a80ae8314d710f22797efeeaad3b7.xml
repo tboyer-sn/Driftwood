@@ -3,14 +3,72 @@
         <category>general</category>
         <client_script><![CDATA[/* UI Page client script: drift_report (x_2160899_driftw_0) */
 addLoadEvent(function () {
-    var API = '/api/x_2160899_driftw_0/configurationnow';
-    var LABELS = { plugins: 'Plugins', applications: 'Applications', mid_servers: 'MID Servers', system_properties: 'System Properties', clone_preservers: 'Clone Preservers', clone_exclusions: 'Clone Exclusions', tables: 'Tables' };
+    var API = '/api/x_2160899_driftw_0/driftwood';
+    var LABELS = { plugins: 'Plugins', applications: 'Applications', mid_servers: 'MID Servers', system_properties: 'System Properties', clone_preservers: 'Clone Preservers', clone_exclusions: 'Clone Exclusions', tables: 'Tables', columns: 'Columns', update_sets: 'Update Sets' };
     var TYPES = { changed: 'Changed', only_a: 'Only in A', only_b: 'Only in B' };
-    var hideVersionOnly = false;
+    var hideVersionOnly = false, hideCountOnly = false, checkSysIds = false;
+    function sysQ() { return checkSysIds ? '&sys_ids=true' : ''; }
+    /* "open" link to an item's source record on its own instance */
+    function openLink(url) {
+        var a = el('a', 'open', 'open \u2197');
+        a.href = url; a.target = '_blank'; a.rel = 'noopener';
+        a.title = 'Open the source record on that instance';
+        return a;
+    }
+    /* rows hidden by the toggles, and how many of a counts object they remove */
+    function hidden(r) { return (hideVersionOnly && r.version_only) || (hideCountOnly && r.count_only); }
+    function hiddenCount(c) { return (hideVersionOnly ? (c.version_only || 0) : 0) + (hideCountOnly ? (c.count_only || 0) : 0); }
+    function subNote(c) {
+        var p = [];
+        if (c.version_only) p.push(c.version_only + ' version-only' + (hideVersionOnly ? ' (hidden)' : ''));
+        if (c.count_only) p.push(c.count_only + ' count-only' + (hideCountOnly ? ' (hidden)' : ''));
+        return p.join(' · ');
+    }
+    function pill(r, fallbackCls, fallbackText) {
+        if (r.version_only) return el('span', 'pill version_only', 'Version only');
+        if (r.count_only) return el('span', 'pill version_only', 'Count only');
+        if (r.kinds && r.kinds.length == 1 && r.kinds[0] == 'sys_id') return el('span', 'pill changed', 'sys_id only');
+        if (r.kinds && r.kinds[0] == 'schema' && fallbackCls == 'changed') return el('span', 'pill changed', 'Schema');
+        return el('span', 'pill ' + fallbackCls, fallbackText);
+    }
     var mode = 'pair', matrix = null, mcat = null, mstatus = null;
     var $ = function (id) { return document.getElementById(id); };
     var instances = [], local = '', result = null, cat = null, typeFilter = null;
 
+    /* Light/dark: follows the surrounding theme; the Theme button overrides it (remembered per browser). */
+    function initTheme(rootId, btnId) {
+        var KEY = 'x_2160899_driftw_0.theme';
+        var root = document.getElementById(rootId), btn = document.getElementById(btnId);
+        if (!root) return;
+        function lum(c) {
+            var m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s\/]+([\d.]+))?/.exec(c || '');
+            if (!m || (m[4] !== undefined && parseFloat(m[4]) == 0)) return -1;
+            return 0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3];
+        }
+        function detect() {
+            try {
+                for (var n = root.parentNode; n && n.nodeType == 1; n = n.parentNode) {
+                    var l = lum(window.getComputedStyle(n).backgroundColor);
+                    if (l >= 0) return l < 128;
+                }
+                var t = lum(window.getComputedStyle(document.body).color);
+                if (t >= 0) return t > 160;
+                return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            } catch (e) { return false; }
+        }
+        function apply(dark) {
+            root.className = root.className.replace(/\s*cn-dark/g, '') + (dark ? ' cn-dark' : '');
+            if (btn) btn.textContent = dark ? 'Light' : 'Dark';
+        }
+        var saved = null;
+        try { saved = window.localStorage.getItem(KEY); } catch (e) { saved = null; }
+        apply(saved ? saved == 'dark' : detect());
+        if (btn) btn.onclick = function () {
+            var dark = root.className.indexOf('cn-dark') == -1;
+            apply(dark);
+            try { window.localStorage.setItem(KEY, dark ? 'dark' : 'light'); } catch (e) { /* not stored */ }
+        };
+    }
     function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.appendChild(document.createTextNode(String(text))); return e; }
     function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
     function status(t) { $('dr-status').textContent = t; }
@@ -60,12 +118,12 @@ addLoadEvent(function () {
         if (!a || !b) return;
         if (a == b) { status('Pick two different instances'); return; }
         status('Comparing…');
-        call('GET', '/compare?a=' + encodeURIComponent(a) + '&b=' + encodeURIComponent(b), null, function (st, r) {
+        call('GET', '/compare?a=' + encodeURIComponent(a) + '&b=' + encodeURIComponent(b) + sysQ(), null, function (st, r) {
             if (st != 200 || !r) { status('Compare failed (' + st + ')' + (r && r.error ? ': ' + r.error : '')); return; }
             result = r; cat = null; typeFilter = null;
             $('dr-download').disabled = false;
             var s = r.summary;
-            status('Compared ' + r.generated_at + ' UTC – ' + (s.changed + s.only_a + s.only_b) + ' difference(s), ' + (s.version_only || 0) + ' of them version-only');
+            status('Compared ' + r.generated_at + ' UTC – ' + (s.changed + s.only_a + s.only_b) + ' difference(s), ' + (s.version_only || 0) + ' version-only, ' + (s.count_only || 0) + ' count-only');
             render();
         });
     }
@@ -86,9 +144,9 @@ addLoadEvent(function () {
         [['changed', 'Changed'], ['only_a', 'Only in A'], ['only_b', 'Only in B'], ['same', 'Same'], ['ignored', 'Ignored (expected)']].forEach(function (c) {
             var card = el('div', 'card ' + c[0] + (typeFilter == c[0] ? ' on' : ''));
             var shown = counts[c[0]] || 0;
-            if (c[0] == 'changed' && hideVersionOnly) shown -= (counts.version_only || 0);
+            if (c[0] == 'changed') shown -= hiddenCount(counts);
             card.appendChild(el('div', 'k', c[1])); card.appendChild(el('div', 'v', shown));
-            if (c[0] == 'changed' && counts.version_only) card.appendChild(el('div', 's', counts.version_only + ' version-only' + (hideVersionOnly ? ' (hidden)' : '')));
+            if (c[0] == 'changed' && subNote(counts)) card.appendChild(el('div', 's', subNote(counts)));
             if (TYPES[c[0]]) card.onclick = function () { typeFilter = typeFilter == c[0] ? null : c[0]; render(); };
             cards.appendChild(card);
         });
@@ -100,7 +158,7 @@ addLoadEvent(function () {
         for (var k in result.categories) {
             var cc = result.categories[k].counts;
             var t = el('div', 'tab' + (cat == k ? ' on' : ''), LABELS[k] || k);
-            t.appendChild(el('span', 'n', cc.changed - (hideVersionOnly ? (cc.version_only || 0) : 0) + cc.only_a + cc.only_b));
+            t.appendChild(el('span', 'n', cc.changed - hiddenCount(cc) + cc.only_a + cc.only_b));
             t.setAttribute('data-cat', k);
             t.onclick = function () { cat = this.getAttribute('data-cat'); render(); };
             tabs.appendChild(t);
@@ -152,7 +210,11 @@ addLoadEvent(function () {
             td.appendChild(line2);
         }
         if (fields.indexOf('attributes.fingerprint') > -1) colLines(td, item, other);
+        if (fields.indexOf('sys_id') > -1 && item.sys_id) {
+            var ls = el('div'); ls.appendChild(el('span', 'muted', 'sys_id: ')); ls.appendChild(el('span', 'diff', item.sys_id)); td.appendChild(ls);
+        }
         if (!td.firstChild) td.appendChild(el('span', 'muted', '(set)'));
+        if (item.url) { var lo = el('div'); lo.appendChild(openLink(item.url)); td.appendChild(lo); }
         return td;
     }
 
@@ -165,7 +227,7 @@ addLoadEvent(function () {
             for (var i = 0; i < rs.length; i++) {
                 var r = rs[i];
                 if (typeFilter && r.type != typeFilter) continue;
-                if (hideVersionOnly && r.version_only) continue;
+                if (hidden(r)) continue;
                 if (f && (r.key + ' ' + r.name).toLowerCase().indexOf(f) == -1) continue;
                 rows.push([k, r]);
             }
@@ -178,7 +240,7 @@ addLoadEvent(function () {
         var max = Math.min(rows.length, 2000);
         for (var j = 0; j < max; j++) {
             var cr = rows[j][1], tr = el('tr');
-            var t0 = el('td'); t0.appendChild(el('span', 'pill ' + (cr.version_only ? 'version_only' : cr.type), cr.version_only ? 'Version only' : TYPES[cr.type])); tr.appendChild(t0);
+            var t0 = el('td'); t0.appendChild(pill(cr, cr.type, TYPES[cr.type])); tr.appendChild(t0);
             tr.appendChild(el('td', null, LABELS[rows[j][0]] || rows[j][0]));
             tr.appendChild(el('td', 'mono', cr.key));
             tr.appendChild(el('td', null, cr.name));
@@ -221,6 +283,12 @@ addLoadEvent(function () {
 
     $('dr-compare').onclick = compare;
     $('dr-hidever').onchange = function () { hideVersionOnly = this.checked; if (mode == 'all') renderMatrix(); else render(); };
+    if ($('dr-hidecount')) $('dr-hidecount').onchange = function () { hideCountOnly = this.checked; if (mode == 'all') renderMatrix(); else render(); };
+    // sys_id drift is computed on the server, so toggling it re-runs the comparison
+    if ($('dr-sysids')) $('dr-sysids').onchange = function () {
+        checkSysIds = this.checked;
+        if (mode == 'all') { if (matrix) compareAll(); } else if (result) compare();
+    };
     $('dr-mode-pair').onclick = function () { setMode('pair'); };
     $('dr-mode-all').onclick = function () { setMode('all'); };
     $('dr-compare-all').onclick = compareAll;
@@ -274,12 +342,12 @@ addLoadEvent(function () {
         for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) ids.push(boxes[i].value);
         if (ids.length < 2) { status('Select at least one instance besides this one'); return; }
         status('Comparing ' + ids.length + ' instances…');
-        call('GET', '/matrix?instances=' + encodeURIComponent(ids.join(',')), null, function (st, r) {
+        call('GET', '/matrix?instances=' + encodeURIComponent(ids.join(',')) + sysQ(), null, function (st, r) {
             if (st != 200 || !r) { status('Compare failed (' + st + ')' + (r && r.error ? ': ' + r.error : '')); return; }
             matrix = r; mcat = null; mstatus = null;
             $('dr-download').disabled = false;
             var s = r.summary;
-            status('Compared ' + r.instances.length + ' instances at ' + r.generated_at + ' UTC – ' + (s.differs + s.partial) + ' row(s) differ, ' + s.version_only + ' version-only');
+            status('Compared ' + r.instances.length + ' instances at ' + r.generated_at + ' UTC – ' + (s.differs + s.partial) + ' row(s) differ, ' + s.version_only + ' version-only, ' + (s.count_only || 0) + ' count-only');
             renderMatrix();
         });
     }
@@ -292,9 +360,9 @@ addLoadEvent(function () {
         [['differs', 'Differs'], ['partial', 'Missing somewhere'], ['same', 'Same everywhere'], ['ignored', 'Ignored (expected)']].forEach(function (c) {
             var card = el('div', 'card ' + (c[0] == 'differs' ? 'changed' : c[0] == 'partial' ? 'only_a' : c[0]) + (mstatus == c[0] ? ' on' : ''));
             var shown = counts[c[0]] || 0;
-            if (c[0] == 'differs' && hideVersionOnly) shown -= (counts.version_only || 0);
+            if (c[0] == 'differs') shown -= hiddenCount(counts);
             card.appendChild(el('div', 'k', c[1])); card.appendChild(el('div', 'v', shown));
-            if (c[0] == 'differs' && counts.version_only) card.appendChild(el('div', 's', counts.version_only + ' version-only' + (hideVersionOnly ? ' (hidden)' : '')));
+            if (c[0] == 'differs' && subNote(counts)) card.appendChild(el('div', 's', subNote(counts)));
             if (c[0] == 'differs' || c[0] == 'partial') card.onclick = function () { mstatus = mstatus == c[0] ? null : c[0]; renderMatrix(); };
             cards.appendChild(card);
         });
@@ -315,7 +383,7 @@ addLoadEvent(function () {
         for (var k in matrix.categories) {
             var cc = matrix.categories[k].counts;
             var t = el('div', 'tab' + (mcat == k ? ' on' : ''), LABELS[k] || k);
-            t.appendChild(el('span', 'n', cc.differs - (hideVersionOnly ? cc.version_only : 0) + cc.partial));
+            t.appendChild(el('span', 'n', cc.differs - hiddenCount(cc) + cc.partial));
             t.setAttribute('data-cat', k);
             t.onclick = function () { mcat = this.getAttribute('data-cat'); renderMatrix(); };
             tabs.appendChild(t);
@@ -349,6 +417,7 @@ addLoadEvent(function () {
             td.appendChild(line);
         }
         if (cell.diff && cell.diff.indexOf('attributes.fingerprint') > -1) colLines(td, cell, row.cells[row.reference]);
+        if (cell.url) { var lo = el('div'); lo.appendChild(openLink(cell.url)); td.appendChild(lo); }
         if (isRef && !row.cells[0]) td.title = 'Reference column for this row (not on the baseline)';
         return td;
     }
@@ -362,7 +431,7 @@ addLoadEvent(function () {
             for (var i = 0; i < rs.length; i++) {
                 var r = rs[i];
                 if (mstatus && r.status != mstatus) continue;
-                if (hideVersionOnly && r.version_only) continue;
+                if (hidden(r)) continue;
                 if (f && (r.key + ' ' + r.name).toLowerCase().indexOf(f) == -1) continue;
                 rows.push([k, r]);
             }
@@ -383,7 +452,7 @@ addLoadEvent(function () {
             kc.appendChild(el('div', 'mono', row.key));
             var sub = el('div', 'muted', (LABELS[rows[j][0]] || rows[j][0]) + (row.name && row.name != row.key ? ' · ' + row.name : ''));
             kc.appendChild(sub);
-            kc.appendChild(el('span', 'pill ' + (row.version_only ? 'version_only' : row.status == 'partial' ? 'only_a' : 'changed'), row.version_only ? 'Version only' : row.status == 'partial' ? 'Missing somewhere' : 'Differs'));
+            kc.appendChild(row.status == 'partial' ? el('span', 'pill only_a', 'Missing somewhere') : pill(row, 'changed', 'Differs'));
             tr.appendChild(kc);
             for (var x = 0; x < row.cells.length; x++) {
                 var td = mcell(row.cells[x], row, x == row.reference);
@@ -396,10 +465,11 @@ addLoadEvent(function () {
         if (rows.length > max) host.appendChild(el('div', 'muted', 'Showing first ' + max + ' of ' + rows.length + ' – download the result for all rows.'));
     }
 
+    initTheme('drift', 'dr-theme');
     loadInstances();
 });
 ]]></client_script>
-        <description>ConfigurationNOW: cross-instance drift report and snapshot import</description>
+        <description>Driftwood: cross-instance drift report and snapshot import</description>
         <direct>false</direct>
         <endpoint>x_2160899_driftw_0_drift_report.do</endpoint>
         <html><![CDATA[<?xml version="1.0" encoding="utf-8" ?>
@@ -408,68 +478,75 @@ addLoadEvent(function () {
   Scope:    x_2160899_driftw_0
   HTML:     this file
   Client script: x_2160899_driftw_0_drift_report.client.js
-  Module:   ConfigurationNOW > Drift Report  (roles: x_2160899_driftw_0.configuration_read)
+  Module:   Driftwood > Drift Report  (roles: x_2160899_driftw_0.configuration_read)
 -->
 <j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
 <style>
-  #drift { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #1f2933; padding: 16px 24px; max-width: 1500px; }
+  #drift { --cn-1d6b3a: #1d6b3a; --cn-1f2933: #1f2933; --cn-1f4e79: #1f4e79; --cn-3e4c59: #3e4c59; --cn-616e7c: #616e7c; --cn-7b8794: #7b8794; --cn-8a5a00: #8a5a00; --cn-9a5b00: #9a5b00; --cn-9aa5b1: #9aa5b1; --cn-9b1c15: #9b1c15; --cn-b3261e: #b3261e; --cn-d9e2ec: #d9e2ec; --cn-e4e7eb: #e4e7eb; --cn-e6eef6: #e6eef6; --cn-e8f0f8: #e8f0f8; --cn-eef2f6: #eef2f6; --cn-f0f4f8: #f0f4f8; --cn-f3e8d6: #f3e8d6; --cn-f4f8fc: #f4f8fc; --cn-f8fafc: #f8fafc; --cn-fbe3e1: #fbe3e1; --cn-fff: #fff; --cn-fff3c4: #fff3c4; --cn-fff8e1: #fff8e1; }
+  #drift.cn-dark { color-scheme: dark; --cn-1d6b3a: #7cd39a; --cn-1f2933: #e4e7eb; --cn-1f4e79: #3d7cc4; --cn-3e4c59: #c3cbd3; --cn-616e7c: #9aa5b1; --cn-7b8794: #8d99a6; --cn-8a5a00: #f0b35c; --cn-9a5b00: #f0b35c; --cn-9aa5b1: #52606d; --cn-9b1c15: #ffb4ab; --cn-b3261e: #ff8a80; --cn-d9e2ec: #3a4450; --cn-e4e7eb: #343c46; --cn-e6eef6: #28323d; --cn-e8f0f8: #1e3247; --cn-eef2f6: #2c333c; --cn-f0f4f8: #262d36; --cn-f3e8d6: #3d3220; --cn-f4f8fc: #20262e; --cn-f8fafc: #222831; --cn-fbe3e1: #43201e; --cn-fff: #1b2028; --cn-fff3c4: #5a4a10; --cn-fff8e1: #3a3218; }
+  #drift { background: var(--cn-fff); border-radius: 6px; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--cn-1f2933); padding: 16px 24px; max-width: 1500px; }
   #drift h1 { font-size: 22px; margin: 0 0 4px 0; font-weight: 600; }
-  #drift .sub { color: #616e7c; margin-bottom: 14px; font-size: 13px; }
+  #drift .sub { color: var(--cn-616e7c); margin-bottom: 14px; font-size: 13px; }
   #drift .bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px; }
-  #drift label.f { display: flex; flex-direction: column; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #616e7c; gap: 3px; }
-  #drift select, #drift input[type=search] { border: 1px solid #9aa5b1; border-radius: 4px; padding: 6px 8px; font-size: 13px; min-width: 240px; background: #fff; }
-  #drift button { border: 1px solid #9aa5b1; background: #fff; border-radius: 4px; padding: 7px 12px; cursor: pointer; font-size: 13px; }
-  #drift button.primary { background: #1f4e79; color: #fff; border-color: #1f4e79; }
+  #drift label.f { display: flex; flex-direction: column; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--cn-616e7c); gap: 3px; }
+  #drift select, #drift input[type=search] { border: 1px solid var(--cn-9aa5b1); border-radius: 4px; padding: 6px 8px; font-size: 13px; min-width: 240px; background: var(--cn-fff); }
+  #drift button { border: 1px solid var(--cn-9aa5b1); background: var(--cn-fff); border-radius: 4px; padding: 7px 12px; cursor: pointer; font-size: 13px; }
+  #drift button.primary { background: var(--cn-1f4e79); color: #ffffff; border-color: var(--cn-1f4e79); }
   #drift button:disabled { opacity: .5; cursor: default; }
   #drift .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 6px 0 16px 0; }
-  #drift .card { border: 1px solid #d9e2ec; border-radius: 6px; padding: 10px 12px; background: #f8fafc; cursor: pointer; }
-  #drift .card.on { outline: 2px solid #1f4e79; }
-  #drift .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #616e7c; }
+  #drift .card { border: 1px solid var(--cn-d9e2ec); border-radius: 6px; padding: 10px 12px; background: var(--cn-f8fafc); cursor: pointer; }
+  #drift .card.on { outline: 2px solid var(--cn-1f4e79); }
+  #drift .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--cn-616e7c); }
   #drift .card .v { font-size: 22px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
-  #drift .card.changed .v { color: #9a5b00; } #drift .card.only_a .v, #drift .card.only_b .v { color: #b3261e; } #drift .card.same .v { color: #1d6b3a; }
+  #drift .card.changed .v { color: var(--cn-9a5b00); } #drift .card.only_a .v, #drift .card.only_b .v { color: var(--cn-b3261e); } #drift .card.same .v { color: var(--cn-1d6b3a); }
   #drift .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-  #drift .side { border: 1px solid #d9e2ec; border-radius: 6px; padding: 8px 12px; font-size: 13px; }
+  #drift .side { border: 1px solid var(--cn-d9e2ec); border-radius: 6px; padding: 8px 12px; font-size: 13px; }
   #drift .side b { font-size: 14px; }
-  #drift .tabs { display: flex; gap: 4px; border-bottom: 1px solid #d9e2ec; margin-bottom: 10px; flex-wrap: wrap; }
+  #drift .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--cn-d9e2ec); margin-bottom: 10px; flex-wrap: wrap; }
   #drift .tab { padding: 8px 12px; cursor: pointer; border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0; font-size: 13px; }
-  #drift .tab.on { border-color: #d9e2ec; background: #fff; font-weight: 600; margin-bottom: -1px; }
-  #drift .tab .n { color: #616e7c; font-weight: 400; margin-left: 4px; }
+  #drift .tab.on { border-color: var(--cn-d9e2ec); background: var(--cn-fff); font-weight: 600; margin-bottom: -1px; }
+  #drift .tab .n { color: var(--cn-616e7c); font-weight: 400; margin-left: 4px; }
   #drift table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
-  #drift th { text-align: left; background: #f0f4f8; padding: 6px 8px; border-bottom: 1px solid #d9e2ec; }
-  #drift td { padding: 5px 8px; border-bottom: 1px solid #eef2f6; vertical-align: top; word-break: break-word; }
+  #drift th { text-align: left; background: var(--cn-f0f4f8); padding: 6px 8px; border-bottom: 1px solid var(--cn-d9e2ec); }
+  #drift td { padding: 5px 8px; border-bottom: 1px solid var(--cn-eef2f6); vertical-align: top; word-break: break-word; }
   #drift td.mono { font-family: Consolas, Menlo, monospace; font-size: 12px; }
   #drift .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; white-space: nowrap; }
-  #drift .pill.changed { background: #f3e8d6; color: #8a5a00; } #drift .pill.only_a, #drift .pill.only_b { background: #fbe3e1; color: #9b1c15; }
-  #drift .diff { background: #fff3c4; border-radius: 2px; padding: 0 2px; }
-  #drift .muted { color: #7b8794; }
-  #drift .panel { border: 1px dashed #9aa5b1; border-radius: 6px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; display: none; }
+  #drift .pill.changed { background: var(--cn-f3e8d6); color: var(--cn-8a5a00); } #drift .pill.only_a, #drift .pill.only_b { background: var(--cn-fbe3e1); color: var(--cn-9b1c15); }
+  #drift .diff { background: var(--cn-fff3c4); border-radius: 2px; padding: 0 2px; }
+  #drift .muted { color: var(--cn-7b8794); }
+  #drift .panel { border: 1px dashed var(--cn-9aa5b1); border-radius: 6px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; display: none; }
   #drift .panel.open { display: block; }
   #drift .log div { margin-top: 4px; }
-  #drift .ok { color: #1d6b3a; } #drift .err { color: #b3261e; }
-  #drift label.tog { font-size: 13px; color: #3e4c59; align-self: center; }
-  #drift .pill.version_only { background: #e4e7eb; color: #3e4c59; }
-  #drift .card .s { font-size: 11px; color: #7b8794; margin-top: 2px; }
+  #drift .ok { color: var(--cn-1d6b3a); } #drift .err { color: var(--cn-b3261e); }
+  #drift label.tog { font-size: 13px; color: var(--cn-3e4c59); align-self: center; }
+  #drift .pill.version_only { background: var(--cn-e4e7eb); color: var(--cn-3e4c59); }
+  #drift .card .s { font-size: 11px; color: var(--cn-7b8794); margin-top: 2px; }
   #drift .modes { display: flex; gap: 0; margin-bottom: 12px; }
   #drift .mode { border-radius: 0; } #drift .mode:first-child { border-radius: 4px 0 0 4px; } #drift .mode:last-child { border-radius: 0 4px 4px 0; border-left: none; }
-  #drift .mode.on { background: #1f4e79; color: #fff; border-color: #1f4e79; }
-  #drift div.f { display: flex; flex-direction: column; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #616e7c; gap: 4px; }
+  #drift .mode.on { background: var(--cn-1f4e79); color: #ffffff; border-color: var(--cn-1f4e79); }
+  #drift div.f { display: flex; flex-direction: column; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--cn-616e7c); gap: 4px; }
   #drift .chips { display: flex; gap: 6px; flex-wrap: wrap; text-transform: none; letter-spacing: 0; }
-  #drift .chip { border: 1px solid #9aa5b1; border-radius: 14px; padding: 4px 10px; font-size: 12.5px; color: #1f2933; background: #fff; }
-  #drift .chip.local { border-color: #1f4e79; background: #e8f0f8; font-weight: 600; }
+  #drift .chip { border: 1px solid var(--cn-9aa5b1); border-radius: 14px; padding: 4px 10px; font-size: 12.5px; color: var(--cn-1f2933); background: var(--cn-fff); }
+  #drift .chip.local { border-color: var(--cn-1f4e79); background: var(--cn-e8f0f8); font-weight: 600; }
   #drift .per { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12.5px; }
-  #drift .per div { border: 1px solid #d9e2ec; border-radius: 6px; padding: 6px 10px; }
-  #drift .mx { overflow-x: auto; max-width: 100%; border: 1px solid #d9e2ec; border-radius: 6px; }
+  #drift .per div { border: 1px solid var(--cn-d9e2ec); border-radius: 6px; padding: 6px 10px; }
+  #drift .mx { overflow-x: auto; max-width: 100%; border: 1px solid var(--cn-d9e2ec); border-radius: 6px; }
   #drift .mx table { width: auto; min-width: 100%; }
-  #drift .mx th, #drift .mx td { min-width: 170px; max-width: 280px; background: #fff; }
-  #drift .mx th { background: #f0f4f8; }
-  #drift .mx .k1 { position: sticky; left: 0; z-index: 2; min-width: 280px; max-width: 280px; box-shadow: inset -1px 0 0 #d9e2ec; }
-  #drift .mx .k2 { position: sticky; left: 296px; z-index: 2; background: #f4f8fc; box-shadow: inset -2px 0 0 #1f4e79; }
-  #drift .mx th.k1, #drift .mx th.k2 { z-index: 3; background: #e6eef6; }
-  #drift .mx td.miss { color: #b3261e; }
-  #drift .mx td.dcell { background: #fff8e1; }
-  #drift .mx .hsub { font-weight: 400; color: #616e7c; font-size: 11px; }
+  #drift .mx th, #drift .mx td { min-width: 170px; max-width: 280px; background: var(--cn-fff); }
+  #drift .mx th { background: var(--cn-f0f4f8); }
+  #drift .mx .k1 { position: sticky; left: 0; z-index: 2; min-width: 280px; max-width: 280px; box-shadow: inset -1px 0 0 var(--cn-d9e2ec); }
+  #drift .mx .k2 { position: sticky; left: 296px; z-index: 2; background: var(--cn-f4f8fc); box-shadow: inset -2px 0 0 var(--cn-1f4e79); }
+  #drift .mx th.k1, #drift .mx th.k2 { z-index: 3; background: var(--cn-e6eef6); }
+  #drift .mx td.miss { color: var(--cn-b3261e); }
+  #drift .mx td.dcell { background: var(--cn-fff8e1); }
+  #drift .mx .hsub { font-weight: 400; color: var(--cn-616e7c); font-size: 11px; }
+  #drift button, #drift select, #drift input { color: var(--cn-1f2933); }
+  #drift button.primary, #drift .mode.on { color: #ffffff; }
+  #drift a.open { font-size: 11px; color: var(--cn-1f4e79); text-decoration: none; }
+  #drift .theme { float: right; font-size: 12px; padding: 3px 9px; }
 </style>
 <div id="drift">
+  <button id="dr-theme" class="theme" type="button" title="Switch light / dark">Theme</button>
   <h1>Drift Report</h1>
   <div class="sub">Compare the stored configuration of two instances. Import downloaded snapshots to add instances.</div>
   <div class="modes">
@@ -490,10 +567,12 @@ addLoadEvent(function () {
     <button id="dr-download" type="button" disabled="disabled">Download result</button>
     <button id="dr-import-toggle" type="button">Import snapshots…</button>
     <label class="tog"><input type="checkbox" id="dr-hidever" /> Hide version-only changes</label>
+    <label class="tog"><input type="checkbox" id="dr-hidecount" /> Hide count-only changes</label>
+    <label class="tog" title="Also flag items whose source record has a different sys_id on another instance (created separately instead of promoted). Re-runs the comparison."><input type="checkbox" id="dr-sysids" /> Check sys_id drift</label>
     <span class="muted" id="dr-status">Loading instances…</span>
   </div>
   <div class="panel" id="dr-import">
-    <div>Choose one or more snapshot files (<code>configurationnow_*.json</code> from Current Instance Settings › Download JSON).</div>
+    <div>Choose one or more snapshot files (<code>driftwood_*.json</code> from Current Instance Settings › Download JSON).</div>
     <div style="margin-top:8px"><input type="file" id="dr-files" multiple="multiple" accept=".json,application/json" />
       <label style="margin-left:12px"><input type="checkbox" id="dr-force" /> Allow older snapshot (overwrite newer stored data)</label>
       <label style="margin-left:12px"><input type="checkbox" id="dr-allowlocal" /> Allow this instance's own snapshot</label></div>
@@ -509,13 +588,13 @@ addLoadEvent(function () {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:49:34</sys_created_on>
         <sys_id>047a80ae8314d710f22797efeeaad3b7</sys_id>
-        <sys_mod_count>3</sys_mod_count>
+        <sys_mod_count>7</sys_mod_count>
         <sys_name>drift_report</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_ui_page_047a80ae8314d710f22797efeeaad3b7</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-04 15:59:30</sys_updated_on>
+        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
     </sys_ui_page>
 </record_update>

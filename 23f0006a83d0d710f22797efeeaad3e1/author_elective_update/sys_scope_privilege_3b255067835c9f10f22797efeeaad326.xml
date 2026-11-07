@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_scope_privilege">
+    <sys_scope_privilege action="DELETE">
+        <operation>read</operation>
+        <source_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</source_scope>
+        <status>allowed</status>
+        <sys_class_name>sys_scope_privilege</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 18:10:26</sys_created_on>
+        <sys_id>3b255067835c9f10f22797efeeaad326</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>sys_ui_view</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_scope_privilege_3b255067835c9f10f22797efeeaad326</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 18:10:26</sys_updated_on>
+        <target_name>sys_ui_view</target_name>
+        <target_scope display_value="Global">global</target_scope>
+        <target_type>sys_db_object</target_type>
+    </sys_scope_privilege>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</application>
+        <file_path/>
+        <instance_id>4f112ca9935853dc611eddd548373ca4</instance_id>
+        <instance_name>dev466156</instance_name>
+        <merge_base/>
+        <name>sys_scope_privilege_3b255067835c9f10f22797efeeaad326</name>
+        <payload><![CDATA[<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_scope_privilege"><sys_scope_privilege action="INSERT_OR_UPDATE"><operation>read</operation><source_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</source_scope><status>allowed</status><sys_class_name>sys_scope_privilege</sys_class_name><sys_created_by>admin</sys_created_by><sys_created_on>2026-11-07 18:10:26</sys_created_on><sys_id>3b255067835c9f10f22797efeeaad326</sys_id><sys_mod_count>0</sys_mod_count><sys_name>sys_ui_view</sys_name><sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package><sys_policy/><sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope><sys_update_name>sys_scope_privilege_3b255067835c9f10f22797efeeaad326</sys_update_name><sys_updated_by>admin</sys_updated_by><sys_updated_on>2026-11-07 18:10:26</sys_updated_on><target_name>sys_ui_view</target_name><target_scope display_value="Global">global</target_scope><target_type>sys_db_object</target_type></sys_scope_privilege></record_update>]]></payload>
+        <payload_hash>572338097</payload_hash>
+        <record_name>sys_ui_view</record_name>
+        <reverted_from/>
+        <source>1018b13e83109b10f22797efeeaad38f</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 18:10:26</sys_created_on>
+        <sys_id>37255067835c9f10f22797efeeaad344</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>1a1b734651e0000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 18:10:26</sys_updated_on>
+        <type>Cross scope privilege</type>
+        <update_guid>bf255067765c9f10dda08691a2e7c542</update_guid>
+        <update_guid_history>bf255067765c9f10dda08691a2e7c542:572338097</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete/>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 18:17:28</sys_created_on>
+        <sys_db_object display_value="" name="sys_scope_privilege">sys_scope_privilege</sys_db_object>
+        <sys_id>7648a3d1abc949f9819605bb99689539</sys_id>
+        <sys_metadata>3b255067835c9f10f22797efeeaad326</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>sys_ui_view</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_scope_delete display_value="">4833286af809459cad5860bb9c581ce4</sys_scope_delete>
+        <sys_update_name>sys_scope_privilege_3b255067835c9f10f22797efeeaad326</sys_update_name>
+        <sys_update_version display_value="sys_scope_privilege_3b255067835c9f10f22797efeeaad326">37255067835c9f10f22797efeeaad344</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 18:17:28</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

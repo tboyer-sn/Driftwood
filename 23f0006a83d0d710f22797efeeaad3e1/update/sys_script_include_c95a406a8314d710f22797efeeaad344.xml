@@ -11,7 +11,7 @@
         <sandbox_callable>false</sandbox_callable>
         <script><![CDATA[/**
  * Script Include: ConfigNowCompare
- * Scope:          x_2160899_driftw_0  (ConfigurationNOW)
+ * Scope:          x_2160899_driftw_0  (Driftwood)
  * Accessible from: This application scope only
  *
  * Cross-instance drift: compares the stored tracked items of two instance CIs
@@ -35,7 +35,7 @@
 var ConfigNowCompare = Class.create();
 ConfigNowCompare.prototype = {
 
-    SCHEMA: 'configurationnow.compare/0.1',
+    SCHEMA: 'driftwood.compare/0.1',
 
     initialize: function (options) {
         this.options = options || {};
@@ -72,12 +72,14 @@ ConfigNowCompare.prototype = {
         if (!b) throw new Error('Instance not found: ' + bRef);
 
         var ignore = this._buildIgnore([a, b]);
+        this._checkSysIds = opts.sysIds === undefined ? !!this.config.compareSysIds : !!opts.sysIds;
 
         var result = {
             schema: this.SCHEMA,
+            sys_id_check: this._checkSysIds,
             generated_at: String(new GlideDateTime().getValue()),
             a: a, b: b,
-            summary: { same: 0, changed: 0, version_only: 0, only_a: 0, only_b: 0, ignored: 0 },
+            summary: { same: 0, changed: 0, version_only: 0, count_only: 0, only_a: 0, only_b: 0, ignored: 0 },
             categories: {}
         };
         var cats = opts.categories || this.config.categories || [];
@@ -89,11 +91,11 @@ ConfigNowCompare.prototype = {
                 var nc = [];
                 if (!this._collected(a, cat)) nc.push(a.instance_name);
                 if (!this._collected(b, cat)) nc.push(b.instance_name);
-                result.categories[cat] = { counts: { same: 0, changed: 0, version_only: 0, only_a: 0, only_b: 0, ignored: 0 }, rows: [], not_collected: nc };
+                result.categories[cat] = { counts: { same: 0, changed: 0, version_only: 0, count_only: 0, only_a: 0, only_b: 0, ignored: 0 }, rows: [], not_collected: nc };
                 continue;
             }
             var ma = this._load(table, a.sys_id, cat), mb = this._load(table, b.sys_id, cat);
-            var counts = { same: 0, changed: 0, version_only: 0, only_a: 0, only_b: 0, ignored: 0 };
+            var counts = { same: 0, changed: 0, version_only: 0, count_only: 0, only_a: 0, only_b: 0, ignored: 0 };
             var rows = [];
             var key;
             for (key in ma) {
@@ -105,9 +107,12 @@ ConfigNowCompare.prototype = {
                     var fields = this._diffFields(ma[key], mb[key], cat);
                     if (!fields.length) { counts.same++; continue; }
                     var vOnly = fields.length == 1 && fields[0] == 'version';
-                    rows.push({ type: 'changed', version_only: vOnly, key: key, name: ma[key].name, a: ma[key], b: mb[key], fields: fields });
+                    var kinds = this._kinds(fields, cat);
+                    var cOnly = kinds.length == 1 && kinds[0] == 'count';
+                    rows.push({ type: 'changed', version_only: vOnly, count_only: cOnly, kinds: kinds, key: key, name: ma[key].name, a: ma[key], b: mb[key], fields: fields });
                     counts.changed++;
                     if (vOnly) counts.version_only++;
+                    if (cOnly) counts.count_only++;
                 }
             }
             for (key in mb) {
@@ -134,6 +139,8 @@ ConfigNowCompare.prototype = {
      *              differs – present everywhere, some column differs from baseline
      *              partial – missing on at least one column
      * version_only – every difference in the row is a version difference
+     * count_only   – every difference is a record count (tables: total, customer_*)
+     * kinds        – drift kinds present in the row (see config.driftKinds)
      */
     compareMany: function (refs, opts) {
         opts = opts || {};
@@ -151,12 +158,14 @@ ConfigNowCompare.prototype = {
         if (insts.length < 2) throw new Error('Need at least two instances to compare');
 
         var ignore = this._buildIgnore(insts);
+        this._checkSysIds = opts.sysIds === undefined ? !!this.config.compareSysIds : !!opts.sysIds;
         var result = {
-            schema: 'configurationnow.matrix/0.1',
+            schema: 'driftwood.matrix/0.1',
+            sys_id_check: this._checkSysIds,
             generated_at: String(new GlideDateTime().getValue()),
             baseline: insts[0].instance_name,
             instances: insts,
-            summary: { same: 0, differs: 0, partial: 0, version_only: 0, ignored: 0 },
+            summary: { same: 0, differs: 0, partial: 0, version_only: 0, count_only: 0, ignored: 0 },
             per_instance: [],
             categories: {}
         };
@@ -176,11 +185,11 @@ ConfigNowCompare.prototype = {
                 for (k in maps[i]) if (!keys[k]) { keys[k] = true; order.push(k); }
             }
             if (nColl < 2) {
-                result.categories[cat] = { counts: { same: 0, differs: 0, partial: 0, version_only: 0, ignored: 0 }, rows: [], not_collected: notColl };
+                result.categories[cat] = { counts: { same: 0, differs: 0, partial: 0, version_only: 0, count_only: 0, ignored: 0 }, rows: [], not_collected: notColl };
                 continue;
             }
             order.sort();
-            var counts = { same: 0, differs: 0, partial: 0, version_only: 0, ignored: 0 };
+            var counts = { same: 0, differs: 0, partial: 0, version_only: 0, count_only: 0, ignored: 0 };
             var rows = [];
             for (var r = 0; r < order.length; r++) {
                 var key = order[r];
@@ -202,17 +211,22 @@ ConfigNowCompare.prototype = {
                         else per[i].same++;
                     }
                     var cell = { value: it.value, version: it.version, state: it.state, attributes: it.attributes, secure: it.secure, diff: f };
+                    if (it.url) cell.url = it.url;
+                    if (this._checkSysIds && it.sys_id) cell.sys_id = it.sys_id;
                     if (it.columns) { cell.columns = it.columns; if (it.columns_truncated) cell.columns_truncated = true; }
                     cells.push(cell);
                 }
                 if (!missing && !anyDiff) { counts.same++; continue; }
                 var vOnly = !missing && fields.length == 1 && fields[0] == 'version';
+                var mKinds = this._kinds(fields, cat);
+                var cOnly = !missing && mKinds.length == 1 && mKinds[0] == 'count';
                 var status = missing ? 'partial' : 'differs';
                 counts[status]++;
                 if (vOnly) counts.version_only++;
+                if (cOnly) counts.count_only++;
                 var nm = '';
                 for (i = 0; i < maps.length && !nm; i++) if (maps[i][key]) nm = maps[i][key].name;
-                rows.push({ key: key, name: nm, status: status, version_only: vOnly, reference: ref, fields: fields, cells: cells });
+                rows.push({ key: key, name: nm, status: status, version_only: vOnly, count_only: cOnly, kinds: mKinds, reference: ref, fields: fields, cells: cells });
             }
             result.categories[cat] = { counts: counts, rows: rows };
             if (notColl.length) result.categories[cat].not_collected = notColl;
@@ -325,6 +339,8 @@ ConfigNowCompare.prototype = {
                 version: gr.getValue('item_version') || '',
                 state: gr.getValue('item_state') || '',
                 hash: gr.getValue('value_hash') || '',
+                sys_id: gr.getValue('source_sys_id') || '',
+                url: gr.isValidField('source_url') ? (gr.getValue('source_url') || '') : '',
                 secure: gr.getValue('is_secure') == '1' || gr.getValue('is_secure') == 'true',
                 attributes: attrs
             };
@@ -351,11 +367,40 @@ ConfigNowCompare.prototype = {
         for (k in b.attributes) seen[k] = true;
         for (k in seen) {
             if (this._ignoreAttrs && (this._ignoreAttrs[k] || this._ignoreAttrs[cat + '|' + k])) continue;
+            // Reported by only one side's collector (e.g. v0.4 table definitions vs
+            // a v0.3 snapshot): not comparable, so not drift
+            if (a.attributes[k] === undefined || b.attributes[k] === undefined) continue;
             if (JSON.stringify(a.attributes[k]) != JSON.stringify(b.attributes[k])) f.push('attributes.' + k);
         }
         // Secret values are masked, so only the (salted) hash can show a difference
         if (!f.length && (a.secure || b.secure) && a.hash != b.hash) f.push('secure_value');
+        // Optional sys_id drift: same item, different source record sys_id (e.g.
+        // rebuilt by hand instead of promoted by update set)
+        if (this._checkSysIds && a.sys_id && b.sys_id && a.sys_id != b.sys_id && !this._sysIdExcluded(cat)) f.push('sys_id');
         return f;
+    },
+
+    _sysIdExcluded: function (cat) {
+        var ex = this.config.sysIdExclude || ['mid_servers', 'update_sets', 'plugins', 'tables', 'columns'];
+        for (var i = 0; i < ex.length; i++) if (ex[i] == cat) return true;
+        return false;
+    },
+
+    /** Drift kinds of a row's differing fields, in a fixed order. */
+    _kinds: function (fields, cat) {
+        var map = (this.config.driftKinds && this.config.driftKinds[cat]) || {};
+        var dflt = (cat == 'tables' || cat == 'columns') ? 'schema' : 'config';
+        var seen = {}, out = [], order = ['schema', 'config', 'clone', 'sys_id', 'count', 'version'];
+        for (var i = 0; i < fields.length; i++) {
+            var f = fields[i], k;
+            if (f == 'version') k = 'version';
+            else if (f == 'sys_id') k = 'sys_id';
+            else if (f.indexOf('attributes.') == 0) k = map[f.substring(11)] || dflt;
+            else k = dflt;
+            seen[k] = true;
+        }
+        for (var j = 0; j < order.length; j++) if (seen[order[j]]) out.push(order[j]);
+        return out;
     },
 
     type: 'ConfigNowCompare'
@@ -365,13 +410,13 @@ ConfigNowCompare.prototype = {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:49:05</sys_created_on>
         <sys_id>c95a406a8314d710f22797efeeaad344</sys_id>
-        <sys_mod_count>4</sys_mod_count>
+        <sys_mod_count>8</sys_mod_count>
         <sys_name>ConfigNowCompare</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_script_include_c95a406a8314d710f22797efeeaad344</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-04 15:58:54</sys_updated_on>
+        <sys_updated_on>2026-11-07 17:47:41</sys_updated_on>
     </sys_script_include>
 </record_update>

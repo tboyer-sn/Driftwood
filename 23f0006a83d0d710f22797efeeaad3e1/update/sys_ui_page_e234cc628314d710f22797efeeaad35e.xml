@@ -3,7 +3,9 @@
         <category>general</category>
         <client_script><![CDATA[/* UI Page client script: current_settings (x_2160899_driftw_0) */
 addLoadEvent(function () {
-    var API = '/api/x_2160899_driftw_0/configurationnow/current';
+    var BASE = '/api/x_2160899_driftw_0/driftwood';
+    var API = BASE + '/current';
+    var lastMsg = '';
     var LABELS = {
         plugins: 'Plugins',
         applications: 'Applications',
@@ -11,7 +13,9 @@ addLoadEvent(function () {
         system_properties: 'System Properties',
         clone_preservers: 'Clone Preservers',
         clone_exclusions: 'Clone Exclusions',
-        tables: 'Tables'
+        tables: 'Tables',
+        columns: 'Columns',
+        update_sets: 'Update Sets'
     };
     var COLUMNS = {
         plugins: [['key', 'Plugin ID', 1], ['name', 'Name'], ['version', 'Version'], ['state', 'State', 0, 1]],
@@ -20,11 +24,53 @@ addLoadEvent(function () {
         system_properties: [['key', 'Property', 1], ['value', 'Value', 1], ['attributes.type', 'Type'], ['attributes.scope', 'Scope'], ['state', 'State', 0, 1]],
         clone_preservers: [['name', 'Name'], ['attributes.table', 'Table', 1], ['value', 'Condition', 1], ['state', 'State', 0, 1]],
         clone_exclusions: [['attributes.table', 'Table', 1], ['state', 'State', 0, 1]],
-        tables: [['key', 'Table', 1], ['name', 'Label'], ['attributes.total', 'Rows'], ['attributes.customer', 'Customer rows'],
+        tables: [['key', 'Table', 1], ['name', 'Label'], ['attributes.scope', 'Scope', 1], ['attributes.total', 'Rows'], ['attributes.customer_scoped', 'Custom app rows'], ['attributes.customer_global', 'Global custom (est.)'], ['attributes.customer_updates', 'Customer updates'],
                  ['attributes.column_count', 'Columns'], ['attributes.parent', 'Extends', 1], ['attributes.fingerprint', 'Schema fingerprint', 1],
-                 ['attributes.source', 'Tracked because'], ['state', 'State', 0, 1]]
+                 ['attributes.clone_exclusion_rules', 'Clone excl.'], ['attributes.clone_preserver_rules', 'Clone pres.'],
+                 ['attributes.source', 'Tracked because'], ['state', 'State', 0, 1]],
+        columns: [['attributes.table', 'Table', 1], ['key', 'Column', 1], ['name', 'Label'], ['attributes.type', 'Type', 1], ['attributes.max_length', 'Length'],
+                  ['attributes.reference', 'Reference', 1], ['attributes.mandatory', 'Mandatory'], ['attributes.read_only', 'Read only'],
+                  ['attributes.scope', 'Scope', 1], ['state', 'State', 0, 1]],
+        update_sets: [['name', 'Update set'], ['attributes.application', 'Application', 1], ['state', 'State', 0, 1],
+                      ['attributes.remote_state', 'Retrieved state'], ['attributes.update_count', 'Updates'], ['attributes.remote_update_count', 'Retrieved updates'],
+                      ['attributes.preview_errors', 'Preview errors'], ['attributes.preview_unresolved', 'Unresolved'], ['attributes.parent', 'Parent'],
+                      ['runtime.origin', 'Origin'], ['runtime.created_by', 'Created by'], ['runtime.updated_on', 'Updated']]
     };
 
+    /* Light/dark: follows the surrounding theme; the Theme button overrides it (remembered per browser). */
+    function initTheme(rootId, btnId) {
+        var KEY = 'x_2160899_driftw_0.theme';
+        var root = document.getElementById(rootId), btn = document.getElementById(btnId);
+        if (!root) return;
+        function lum(c) {
+            var m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s\/]+([\d.]+))?/.exec(c || '');
+            if (!m || (m[4] !== undefined && parseFloat(m[4]) == 0)) return -1;
+            return 0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3];
+        }
+        function detect() {
+            try {
+                for (var n = root.parentNode; n && n.nodeType == 1; n = n.parentNode) {
+                    var l = lum(window.getComputedStyle(n).backgroundColor);
+                    if (l >= 0) return l < 128;
+                }
+                var t = lum(window.getComputedStyle(document.body).color);
+                if (t >= 0) return t > 160;
+                return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            } catch (e) { return false; }
+        }
+        function apply(dark) {
+            root.className = root.className.replace(/\s*cn-dark/g, '') + (dark ? ' cn-dark' : '');
+            if (btn) btn.textContent = dark ? 'Light' : 'Dark';
+        }
+        var saved = null;
+        try { saved = window.localStorage.getItem(KEY); } catch (e) { saved = null; }
+        apply(saved ? saved == 'dark' : detect());
+        if (btn) btn.onclick = function () {
+            var dark = root.className.indexOf('cn-dark') == -1;
+            apply(dark);
+            try { window.localStorage.setItem(KEY, dark ? 'dark' : 'light'); } catch (e) { /* not stored */ }
+        };
+    }
     var data = null, current = null;
     var $ = function (id) { return document.getElementById(id); };
 
@@ -102,47 +148,145 @@ addLoadEvent(function () {
         renderTable();
     }
 
+    /* Per-tab list state: sort column/direction and per-column filters (kept while switching tabs). */
+    var listState = {};
+    function stateFor(cat) { if (!listState[cat]) listState[cat] = { sort: -1, dir: 1, filters: {} }; return listState[cat]; }
+
+    /**
+     * Per-column filter, list-view style:
+     *   text   contains (case-insensitive)     =text  equals
+     *   !text  does not contain                 >n / <n  numeric compare
+     *   empty  is empty                          !empty  is not empty
+     */
+    function matches(v, f) {
+        var s = String(v === '' || v == null ? '' : v).toLowerCase();
+        f = String(f).toLowerCase();
+        if (f == 'empty') return s === '';
+        if (f == '!empty') return s !== '';
+        var c = f.charAt(0), rest = f.substring(1);
+        if (c == '=') return s == rest;
+        if (c == '!') return s.indexOf(rest) == -1;
+        if ((c == '>' || c == '<') && rest !== '' && !isNaN(parseFloat(rest))) {
+            var n = parseFloat(s);
+            if (isNaN(n)) return false;
+            return c == '>' ? n > parseFloat(rest) : n < parseFloat(rest);
+        }
+        return s.indexOf(f) > -1;
+    }
+
+    function cmp(a, b) {
+        var num = /^-?\d+(\.\d+)?$/;
+        if (num.test(String(a)) && num.test(String(b))) return parseFloat(a) - parseFloat(b);
+        a = String(a).toLowerCase(); b = String(b).toLowerCase();
+        return a < b ? -1 : (a > b ? 1 : 0);
+    }
+
     function renderTable() {
         var host = $('cfgnow-table'); clear(host);
         if (!current) return;
         var cols = COLUMNS[current] || [['key', 'Key'], ['value', 'Value'], ['state', 'State']];
-        var f = ($('cfgnow-filter').value || '').toLowerCase();
-        var items = data.categories[current].items;
-        var table = el('table'), thead = el('thead'), hr = el('tr');
-        for (var h = 0; h < cols.length; h++) hr.appendChild(el('th', null, cols[h][1]));
-        thead.appendChild(hr); table.appendChild(thead);
-        var tbody = el('tbody'), shown = 0;
-        for (var i = 0; i < items.length; i++) {
-            var it = items[i];
-            if (f && JSON.stringify(it).toLowerCase().indexOf(f) == -1) continue;
-            var tr = el('tr');
-            for (var c = 0; c < cols.length; c++) {
-                var v = get(it, cols[c][0]);
-                var td = el('td', cols[c][2] ? 'mono' : null);
-                if (cols[c][3]) td.appendChild(el('span', 'pill ' + v, v || '—'));
-                else td.appendChild(document.createTextNode(v === '' ? '—' : String(v)));
-                tr.appendChild(td);
-            }
-            tbody.appendChild(tr); shown++;
+        var st = stateFor(current);
+        var table = el('table'), thead = el('thead'), hr = el('tr'), fr = el('tr', 'filters');
+        for (var h = 0; h < cols.length; h++) {
+            var th = el('th', 'sortable', cols[h][1] + (st.sort == h ? (st.dir > 0 ? ' \u25B2' : ' \u25BC') : ''));
+            th.setAttribute('data-col', h);
+            th.title = 'Sort by ' + cols[h][1];
+            th.onclick = function () {
+                var c = parseInt(this.getAttribute('data-col'), 10);
+                if (st.sort == c) st.dir = -st.dir; else { st.sort = c; st.dir = 1; }
+                renderTable();
+            };
+            hr.appendChild(th);
+            var fth = el('th'), inp = el('input');
+            inp.type = 'search'; inp.className = 'colf'; inp.placeholder = 'Filter';
+            inp.title = 'text = contains · =text equals · !text not · >n / <n · empty / !empty';
+            inp.value = st.filters[h] || '';
+            inp.setAttribute('data-col', h);
+            inp.oninput = function () { st.filters[this.getAttribute('data-col')] = this.value; drawBody(); };
+            fth.appendChild(inp); fr.appendChild(fth);
         }
+        hr.appendChild(el('th', null, '')); fr.appendChild(el('th'));
+        thead.appendChild(hr); thead.appendChild(fr); table.appendChild(thead);
+        var tbody = el('tbody');
         table.appendChild(tbody); host.appendChild(table);
-        $('cfgnow-status').textContent = shown + ' of ' + items.length + ' shown';
+
+        function drawBody() {
+            clear(tbody);
+            var f = ($('cfgnow-filter').value || '').toLowerCase();
+            var items = data.categories[current].items, rows = [], i, c;
+            for (i = 0; i < items.length; i++) {
+                var it = items[i], ok = true;
+                if (f && JSON.stringify(it).toLowerCase().indexOf(f) == -1) continue;
+                for (c in st.filters) if (st.filters[c] && !matches(get(it, cols[c][0]), st.filters[c])) { ok = false; break; }
+                if (ok) rows.push(it);
+            }
+            if (st.sort > -1) {
+                var path = cols[st.sort][0];
+                rows.sort(function (x, y) { return st.dir * cmp(get(x, path), get(y, path)); });
+            }
+            for (i = 0; i < rows.length; i++) {
+                var tr = el('tr');
+                for (c = 0; c < cols.length; c++) {
+                    var v = get(rows[i], cols[c][0]);
+                    var td = el('td', cols[c][2] ? 'mono' : null);
+                    if (cols[c][3]) td.appendChild(el('span', 'pill ' + v, v || '\u2014'));
+                    else td.appendChild(document.createTextNode(v === '' ? '\u2014' : String(v)));
+                    tr.appendChild(td);
+                }
+                var lk = el('td');
+                if (rows[i].source_table && rows[i].source_sys_id) {
+                    var a = el('a', 'open', 'open \u2197');
+                    a.href = '/' + rows[i].source_table + '.do?sys_id=' + rows[i].source_sys_id; a.target = '_blank'; a.rel = 'noopener';
+                    a.title = 'Open the source record';
+                    lk.appendChild(a);
+                }
+                tr.appendChild(lk);
+                tbody.appendChild(tr);
+            }
+            $('cfgnow-status').textContent = (lastMsg ? lastMsg + ' \u00B7 ' : '') + rows.length + ' of ' + items.length + ' shown';
+        }
+        drawBody();
     }
 
-    $('cfgnow-refresh').onclick = load;
+    $('cfgnow-refresh').onclick = function () { lastMsg = ''; load(); };
+    $('cfgnow-collect').onclick = function () {
+        var btn = this;
+        btn.disabled = true;
+        lastMsg = '';
+        $('cfgnow-status').textContent = 'Collecting and saving…';
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', BASE + '/collect', true);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-UserToken', window.g_ck);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState != 4) return;
+            btn.disabled = false;
+            var r = null;
+            try { r = JSON.parse(xhr.responseText).result; } catch (e) { r = null; }
+            if (xhr.status == 403) { $('cfgnow-status').textContent = 'Collect now needs role x_2160899_driftw_0.configuration_admin'; return; }
+            if (xhr.status != 200 || !r || !r.totals) { $('cfgnow-status').textContent = 'Collect failed (' + xhr.status + ')' + (r && r.error ? ': ' + r.error : ''); return; }
+            var t = r.totals;
+            lastMsg = 'Saved ' + r.collected_at + ' UTC: ' + t.inserted + ' new, ' + t.updated + ' changed, ' + t.restored + ' restored, ' +
+                t.removed + ' no longer present, ' + t.unchanged + ' unchanged (' + r.duration_ms + ' ms)' + (r.warnings ? ', ' + r.warnings + ' warning(s)' : '');
+            load();
+        };
+        xhr.send('{}');
+    };
     $('cfgnow-filter').oninput = function () { if (data) renderTable(); };
     $('cfgnow-download').onclick = function () {
         if (!data) return;
         var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'configurationnow_' + (data.instance.instance_name || 'instance') + '_' + data.collected_at.replace(/[: ]/g, '-') + '.json';
+        a.download = 'driftwood_' + (data.instance.instance_name || 'instance') + '_' + data.collected_at.replace(/[: ]/g, '-') + '.json';
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     };
+    initTheme('cfgnow', 'cfgnow-theme');
     load();
 });
 ]]></client_script>
-        <description>ConfigurationNOW: current instance settings report</description>
+        <description>Driftwood: current instance settings report</description>
         <direct>false</direct>
         <endpoint>x_2160899_driftw_0_current_settings.do</endpoint>
         <html><![CDATA[<?xml version="1.0" encoding="utf-8" ?>
@@ -152,41 +296,52 @@ addLoadEvent(function () {
   HTML:     this file
   Client script: x_2160899_driftw_0_current_settings.client.js
   Processing script: (none)
-  Module:   ConfigurationNOW > Current Instance Settings  (roles: x_2160899_driftw_0.configuration_read)
+  Module:   Driftwood > Current Instance Settings  (roles: x_2160899_driftw_0.configuration_read)
 -->
 <j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
 <style>
-  #cfgnow { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #1f2933; padding: 16px 24px; max-width: 1400px; }
+  #cfgnow { --cn-1d6b3a: #1d6b3a; --cn-1f2933: #1f2933; --cn-1f4e79: #1f4e79; --cn-2d3f8f: #2d3f8f; --cn-616e7c: #616e7c; --cn-7b8794: #7b8794; --cn-8a5a00: #8a5a00; --cn-9aa5b1: #9aa5b1; --cn-d9e2ec: #d9e2ec; --cn-dcefe3: #dcefe3; --cn-e3e8f8: #e3e8f8; --cn-e4e7eb: #e4e7eb; --cn-eef2f6: #eef2f6; --cn-f0c36d: #f0c36d; --cn-f0f4f8: #f0f4f8; --cn-f3e8d6: #f3e8d6; --cn-f8fafc: #f8fafc; --cn-fff: #fff; --cn-fff8e6: #fff8e6; }
+  #cfgnow.cn-dark { color-scheme: dark; --cn-1d6b3a: #7cd39a; --cn-1f2933: #e4e7eb; --cn-1f4e79: #3d7cc4; --cn-2d3f8f: #9fb1f0; --cn-616e7c: #9aa5b1; --cn-7b8794: #8d99a6; --cn-8a5a00: #f0b35c; --cn-9aa5b1: #52606d; --cn-d9e2ec: #3a4450; --cn-dcefe3: #1f3a2a; --cn-e3e8f8: #252e4a; --cn-e4e7eb: #343c46; --cn-eef2f6: #2c333c; --cn-f0c36d: #8a6a2a; --cn-f0f4f8: #262d36; --cn-f3e8d6: #3d3220; --cn-f8fafc: #222831; --cn-fff: #1b2028; --cn-fff8e6: #2f2a1c; }
+  #cfgnow { background: var(--cn-fff); border-radius: 6px; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--cn-1f2933); padding: 16px 24px; max-width: 1400px; }
   #cfgnow h1 { font-size: 22px; margin: 0 0 4px 0; font-weight: 600; }
-  #cfgnow .sub { color: #616e7c; margin-bottom: 16px; font-size: 13px; }
+  #cfgnow .sub { color: var(--cn-616e7c); margin-bottom: 16px; font-size: 13px; }
   #cfgnow .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
-  #cfgnow button { border: 1px solid #9aa5b1; background: #fff; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
-  #cfgnow button.primary { background: #1f4e79; color: #fff; border-color: #1f4e79; }
-  #cfgnow input[type=search] { border: 1px solid #9aa5b1; border-radius: 4px; padding: 6px 10px; min-width: 260px; font-size: 13px; }
+  #cfgnow button { border: 1px solid var(--cn-9aa5b1); background: var(--cn-fff); border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  #cfgnow button.primary { background: var(--cn-1f4e79); color: #ffffff; border-color: var(--cn-1f4e79); }
+  #cfgnow input[type=search] { border: 1px solid var(--cn-9aa5b1); border-radius: 4px; padding: 6px 10px; min-width: 260px; font-size: 13px; }
   #cfgnow .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-bottom: 18px; }
-  #cfgnow .card { border: 1px solid #d9e2ec; border-radius: 6px; padding: 10px 12px; background: #f8fafc; }
-  #cfgnow .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #616e7c; }
+  #cfgnow .card { border: 1px solid var(--cn-d9e2ec); border-radius: 6px; padding: 10px 12px; background: var(--cn-f8fafc); }
+  #cfgnow .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--cn-616e7c); }
   #cfgnow .card .v { font-size: 15px; font-weight: 600; margin-top: 2px; word-break: break-all; }
-  #cfgnow .tabs { display: flex; gap: 4px; border-bottom: 1px solid #d9e2ec; margin-bottom: 10px; flex-wrap: wrap; }
+  #cfgnow .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--cn-d9e2ec); margin-bottom: 10px; flex-wrap: wrap; }
   #cfgnow .tab { padding: 8px 12px; cursor: pointer; border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0; font-size: 13px; }
-  #cfgnow .tab.on { border-color: #d9e2ec; background: #fff; font-weight: 600; margin-bottom: -1px; }
-  #cfgnow .tab .n { color: #616e7c; font-weight: 400; margin-left: 4px; }
+  #cfgnow .tab.on { border-color: var(--cn-d9e2ec); background: var(--cn-fff); font-weight: 600; margin-bottom: -1px; }
+  #cfgnow .tab .n { color: var(--cn-616e7c); font-weight: 400; margin-left: 4px; }
   #cfgnow table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
-  #cfgnow th { text-align: left; background: #f0f4f8; padding: 6px 8px; border-bottom: 1px solid #d9e2ec; position: sticky; top: 0; }
-  #cfgnow td { padding: 5px 8px; border-bottom: 1px solid #eef2f6; vertical-align: top; word-break: break-word; }
+  #cfgnow th { text-align: left; background: var(--cn-f0f4f8); padding: 6px 8px; border-bottom: 1px solid var(--cn-d9e2ec); position: sticky; top: 0; }
+  #cfgnow td { padding: 5px 8px; border-bottom: 1px solid var(--cn-eef2f6); vertical-align: top; word-break: break-word; }
   #cfgnow td.mono { font-family: Consolas, Menlo, monospace; font-size: 12px; }
-  #cfgnow .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; background: #e4e7eb; }
-  #cfgnow .pill.active, #cfgnow .pill.set, #cfgnow .pill.validated { background: #dcefe3; color: #1d6b3a; }
-  #cfgnow .pill.inactive, #cfgnow .pill.not_set { background: #f3e8d6; color: #8a5a00; }
-  #cfgnow .pill.secure { background: #e3e8f8; color: #2d3f8f; }
-  #cfgnow .warn { border: 1px solid #f0c36d; background: #fff8e6; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 12.5px; }
-  #cfgnow .muted { color: #7b8794; }
+  #cfgnow .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; background: var(--cn-e4e7eb); }
+  #cfgnow .pill.active, #cfgnow .pill.set, #cfgnow .pill.validated { background: var(--cn-dcefe3); color: var(--cn-1d6b3a); }
+  #cfgnow .pill.inactive, #cfgnow .pill.not_set { background: var(--cn-f3e8d6); color: var(--cn-8a5a00); }
+  #cfgnow .pill.secure { background: var(--cn-e3e8f8); color: var(--cn-2d3f8f); }
+  #cfgnow .warn { border: 1px solid var(--cn-f0c36d); background: var(--cn-fff8e6); border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 12.5px; }
+  #cfgnow .muted { color: var(--cn-7b8794); }
+  #cfgnow button, #cfgnow select, #cfgnow input { color: var(--cn-1f2933); }
+  #cfgnow button.primary, #cfgnow .mode.on { color: #ffffff; }
+  #cfgnow th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  #cfgnow tr.filters th { padding: 3px 6px; position: sticky; top: 28px; }
+  #cfgnow input.colf { min-width: 0; width: 100%; box-sizing: border-box; padding: 3px 6px; font-size: 12px; font-weight: 400; background: var(--cn-fff); }
+  #cfgnow a.open { font-size: 11px; color: var(--cn-1f4e79); text-decoration: none; white-space: nowrap; }
+  #cfgnow .theme { float: right; font-size: 12px; padding: 3px 9px; }
 </style>
 <div id="cfgnow">
+  <button id="cfgnow-theme" class="theme" type="button" title="Switch light / dark">Theme</button>
   <h1>Current Instance Settings</h1>
-  <div class="sub" id="cfgnow-sub">ConfigurationNOW POC – live read of this instance</div>
+  <div class="sub" id="cfgnow-sub">Driftwood – live read of this instance</div>
   <div class="toolbar">
-    <button class="primary" id="cfgnow-refresh" type="button">Refresh</button>
+    <button class="primary" id="cfgnow-collect" type="button" title="Collect and save this instance's configuration now (configuration_admin)">Collect now</button>
+    <button id="cfgnow-refresh" type="button" title="Re-read live values without saving">Refresh</button>
     <button id="cfgnow-download" type="button">Download JSON</button>
     <input type="search" id="cfgnow-filter" placeholder="Filter current tab…" />
     <span class="muted" id="cfgnow-status">Loading…</span>
@@ -204,13 +359,13 @@ addLoadEvent(function () {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:22:25</sys_created_on>
         <sys_id>e234cc628314d710f22797efeeaad35e</sys_id>
-        <sys_mod_count>2</sys_mod_count>
+        <sys_mod_count>6</sys_mod_count>
         <sys_name>current_settings</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_ui_page_e234cc628314d710f22797efeeaad35e</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-04 15:59:30</sys_updated_on>
+        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
     </sys_ui_page>
 </record_update>

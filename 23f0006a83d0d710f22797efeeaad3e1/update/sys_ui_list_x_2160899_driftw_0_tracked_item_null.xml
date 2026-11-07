@@ -2,78 +2,18 @@
     <sys_ui_list parent="" relationship="" sys_domain="global" table="x_2160899_driftw_0_tracked_item" version="2" view="">
         <sys_ui_list_element action="INSERT_OR_UPDATE">
             <average_value>false</average_value>
-            <element>name</element>
+            <element>instance</element>
             <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
             <max_value>false</max_value>
             <min_value>false</min_value>
             <position>0</position>
             <sum>false</sum>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>a1058ce28314d710f22797efeeaad3e5</sys_id>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>11451467835c9f10f22797efeeaad365</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
-        </sys_ui_list_element>
-        <sys_ui_list_element action="INSERT_OR_UPDATE">
-            <average_value>false</average_value>
-            <element>first_seen</element>
-            <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
-            <max_value>false</max_value>
-            <min_value>false</min_value>
-            <position>1</position>
-            <sum>false</sum>
-            <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>a1058ce28314d710f22797efeeaad3e6</sys_id>
-            <sys_mod_count>0</sys_mod_count>
-            <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
-        </sys_ui_list_element>
-        <sys_ui_list_element action="INSERT_OR_UPDATE">
-            <average_value>false</average_value>
-            <element>instance</element>
-            <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
-            <max_value>false</max_value>
-            <min_value>false</min_value>
-            <position>2</position>
-            <sum>false</sum>
-            <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>29058ce28314d710f22797efeeaad3e6</sys_id>
-            <sys_mod_count>0</sys_mod_count>
-            <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
-        </sys_ui_list_element>
-        <sys_ui_list_element action="INSERT_OR_UPDATE">
-            <average_value>false</average_value>
-            <element>is_secure</element>
-            <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
-            <max_value>false</max_value>
-            <min_value>false</min_value>
-            <position>3</position>
-            <sum>false</sum>
-            <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>ad058ce28314d710f22797efeeaad3e6</sys_id>
-            <sys_mod_count>0</sys_mod_count>
-            <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
-        </sys_ui_list_element>
-        <sys_ui_list_element action="INSERT_OR_UPDATE">
-            <average_value>false</average_value>
-            <element>item_attributes</element>
-            <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
-            <max_value>false</max_value>
-            <min_value>false</min_value>
-            <position>4</position>
-            <sum>false</sum>
-            <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>25058ce28314d710f22797efeeaad3e7</sys_id>
-            <sys_mod_count>0</sys_mod_count>
-            <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
         </sys_ui_list_element>
         <sys_ui_list_element action="INSERT_OR_UPDATE">
             <average_value>false</average_value>
@@ -81,14 +21,29 @@
             <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
             <max_value>false</max_value>
             <min_value>false</min_value>
-            <position>5</position>
+            <position>1</position>
             <sum>false</sum>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>a9058ce28314d710f22797efeeaad3e7</sys_id>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>99451467835c9f10f22797efeeaad365</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>name</element>
+            <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>2</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>15451467835c9f10f22797efeeaad366</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
         </sys_ui_list_element>
         <sys_ui_list_element action="INSERT_OR_UPDATE">
             <average_value>false</average_value>
@@ -96,29 +51,14 @@
             <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
             <max_value>false</max_value>
             <min_value>false</min_value>
-            <position>6</position>
+            <position>3</position>
             <sum>false</sum>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>2d05cce28314d710f22797efeeaad319</sys_id>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>9d451467835c9f10f22797efeeaad366</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
-        </sys_ui_list_element>
-        <sys_ui_list_element action="INSERT_OR_UPDATE">
-            <average_value>false</average_value>
-            <element>item_state</element>
-            <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
-            <max_value>false</max_value>
-            <min_value>false</min_value>
-            <position>7</position>
-            <sum>false</sum>
-            <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>a105cce28314d710f22797efeeaad31a</sys_id>
-            <sys_mod_count>0</sys_mod_count>
-            <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
         </sys_ui_list_element>
         <sys_ui_list_element action="INSERT_OR_UPDATE">
             <average_value>false</average_value>
@@ -126,14 +66,14 @@
             <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
             <max_value>false</max_value>
             <min_value>false</min_value>
-            <position>8</position>
+            <position>4</position>
             <sum>false</sum>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>2905cce28314d710f22797efeeaad31a</sys_id>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>19451467835c9f10f22797efeeaad367</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
         </sys_ui_list_element>
         <sys_ui_list_element action="INSERT_OR_UPDATE">
             <average_value>false</average_value>
@@ -141,14 +81,59 @@
             <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
             <max_value>false</max_value>
             <min_value>false</min_value>
-            <position>9</position>
+            <position>5</position>
             <sum>false</sum>
             <sys_created_by>admin</sys_created_by>
-            <sys_created_on>2026-11-04 14:25:54</sys_created_on>
-            <sys_id>ad05cce28314d710f22797efeeaad31a</sys_id>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>91451467835c9f10f22797efeeaad368</sys_id>
             <sys_mod_count>0</sys_mod_count>
             <sys_updated_by>admin</sys_updated_by>
-            <sys_updated_on>2026-11-04 14:25:54</sys_updated_on>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>item_state</element>
+            <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>6</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>1d451467835c9f10f22797efeeaad368</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>last_changed</element>
+            <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>7</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>95451467835c9f10f22797efeeaad369</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
+        </sys_ui_list_element>
+        <sys_ui_list_element action="INSERT_OR_UPDATE">
+            <average_value>false</average_value>
+            <element>source_url</element>
+            <list_id display_value="x_2160899_driftw_0_tracked_item" element="NULL" name="x_2160899_driftw_0_tracked_item" parent="NULL" relationship="NULL" sys_domain="global" view="Default view">ad058ce28314d710f22797efeeaad3e0</list_id>
+            <max_value>false</max_value>
+            <min_value>false</min_value>
+            <position>8</position>
+            <sum>false</sum>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-11-07 18:10:49</sys_created_on>
+            <sys_id>11451467835c9f10f22797efeeaad36a</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-11-07 18:10:49</sys_updated_on>
         </sys_ui_list_element>
         <sys_ui_list action="INSERT_OR_UPDATE">
             <average_value>false</average_value>
