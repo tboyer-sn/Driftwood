@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="enforce_dot_walk_cross_scope_access=true" db_object_id="9161a82f839c9f10f22797efeeaad393" label="Tracked Object" max_length="40" name="x_2160899_driftw_0_tracked_object" type="collection">
+        <element display="true" label="Name" max_length="255" name="name" type="string"/>
+        <element label="Differs on" max_length="1000" name="differs_on" type="string"/>
+        <element label="Object key" max_length="300" name="object_key" type="string" unique="true"/>
+        <element choice="1" label="Drift status" max_length="40" name="drift_status" type="string">
+            <choice>
+                <element inactive_on_update="false" label="Same everywhere" sequence="10" value="same"/>
+                <element inactive_on_update="false" label="Differs" sequence="20" value="differs"/>
+                <element inactive_on_update="false" label="Not compared yet" sequence="50" value="not_compared"/>
+                <element inactive_on_update="false" label="Single instance" sequence="40" value="single"/>
+                <element inactive_on_update="false" label="Missing somewhere" sequence="30" value="missing"/>
+            </choice>
+        </element>
+        <element label="Present on" max_length="40" name="present_count" type="integer"/>
+        <element label="Drift status changed" max_length="40" name="drift_changed" type="glide_date_time"/>
+        <element label="First seen" max_length="40" name="first_seen" type="glide_date_time"/>
+        <element label="Item key" max_length="255" name="item_key" type="string"/>
+        <element label="Parent object" max_length="32" name="parent_object" reference="x_2160899_driftw_0_tracked_object" type="reference"/>
+        <element label="Instances compared" max_length="40" name="instance_count" type="integer"/>
+        <element label="Differs on Prod" max_length="40" name="differs_on_prod" type="boolean"/>
+        <element label="Baseline instance" max_length="32" name="baseline_instance" reference="x_2160899_driftw_0_cmdb_ci_sn_instance" type="reference"/>
+        <element choice="1" label="Item category" max_length="40" name="item_category" type="string">
+            <choice>
+                <element inactive_on_update="false" label="Applications" sequence="20" value="applications"/>
+                <element inactive_on_update="false" label="Update Sets" sequence="90" value="update_sets"/>
+                <element inactive_on_update="false" label="Columns" sequence="80" value="columns"/>
+                <element inactive_on_update="false" label="Clone Preservers" sequence="50" value="clone_preservers"/>
+                <element inactive_on_update="false" label="Tables" sequence="70" value="tables"/>
+                <element inactive_on_update="false" label="System Properties" sequence="40" value="system_properties"/>
+                <element inactive_on_update="false" label="Plugins" sequence="10" value="plugins"/>
+                <element inactive_on_update="false" label="Clone Exclusions" sequence="60" value="clone_exclusions"/>
+                <element inactive_on_update="false" label="MID Servers" sequence="30" value="mid_servers"/>
+            </choice>
+        </element>
+        <element label="Drift kinds" max_length="255" name="drift_kinds" type="string"/>
+        <element label="Last compared" max_length="40" name="last_compared" type="glide_date_time"/>
+        <element label="Missing on" max_length="1000" name="missing_on" type="string"/>
+        <index name="index">
+            <element name="baseline_instance"/>
+        </index>
+        <index name="index2">
+            <element name="parent_object"/>
+        </index>
+    </element>
+</database>
