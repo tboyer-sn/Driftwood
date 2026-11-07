@@ -52,19 +52,33 @@ ConfigNowWriter.prototype = {
      *     except for a category's first (baseline) load on an instance
      * A category marked incremental (snapshot.categories[cat].incremental) only
      * contains what changed, so missing items are NOT marked removed.
+     *
+     * Tracked objects (v0.6, when tracked_object exists): every observation
+     * written or found without one is linked to its object (ConfigNowObjects),
+     * created on first sight; inherited columns (Z12) get none. The objects
+     * touched by this run are in result.objects.touched / this.touchedObjects,
+     * for the drift recompute.
      */
     persist: function (snapshot, options) {
         options = options || {};
         var now = String(options.timestamp || new GlideDateTime().getValue());
         var persistedAt = String(new GlideDateTime().getValue());
         var result = { instance_sys_id: '', run_id: '', changes_logged: 0, baseline: [], categories: {},
-            totals: { inserted: 0, updated: 0, unchanged: 0, removed: 0, restored: 0 } };
+            totals: { inserted: 0, updated: 0, unchanged: 0, removed: 0, restored: 0 }, objects: { created: 0, linked: 0, touched: 0 } };
 
         var instId = this._upsertInstance(snapshot, now);
         result.instance_sys_id = instId;
         var inst = snapshot.instance || {};
         var run = this._startRun(instId, snapshot, options, now, persistedAt);
-        var ctx = { run: run, instId: instId, now: now, base: this._baseUrl(inst.instance_url), changes: 0 };
+        var ctx = { run: run, instId: instId, now: now, base: this._baseUrl(inst.instance_url), changes: 0,
+            objects: this._objects(), inherited: {}, linked: 0 };
+        if (ctx.objects && snapshot.categories && snapshot.categories.columns) {
+            var tc = snapshot.categories.tables;
+            var parents = tc && tc.items ? ctx.objects.parentsFromItems(tc.items) : ctx.objects.parentsFromStore(instId);
+            var colKeys = {}, ci = snapshot.categories.columns.items || [];
+            for (var q = 0; q < ci.length; q++) colKeys[ci[q].key] = true;
+            ctx.inherited = ctx.objects.inheritedColumns(parents, colKeys);
+        }
 
         var incremental = false, watermarks = {}, cats = [];
         for (var cat in snapshot.categories) {
@@ -80,6 +94,8 @@ ConfigNowWriter.prototype = {
             for (var k in r) result.totals[k] += r[k];
         }
         result.changes_logged = ctx.changes;
+        this.touchedObjects = ctx.objects ? ctx.objects.touchedIds() : [];
+        if (ctx.objects) result.objects = { created: ctx.objects.created, linked: ctx.linked, touched: this.touchedObjects.length };
 
         if (run) {
             result.run_id = run.run_id;
@@ -121,6 +137,20 @@ ConfigNowWriter.prototype = {
             gr.update();
         }
         return result;
+    },
+
+    /** ConfigNowObjects when the v0.6 schema is installed, else null. */
+    _objects: function () {
+        if (this.options.objects === false) return null;
+        var o = this.options.objects || (typeof ConfigNowObjects != 'undefined' ? new ConfigNowObjects(this.config) : null);
+        return o && o.available() ? o : null;
+    },
+
+    /** Object for an observation ('' = none: no v0.6 schema, or an inherited column). */
+    _objectFor: function (ctx, cat, key, name) {
+        if (!ctx.objects) return '';
+        if (cat == 'columns' && ctx.inherited[key]) return '';
+        return ctx.objects.resolve(cat, key, name || key, ctx.now);
     },
 
     /** Creates the collection_run row (null if the history tables aren't installed). */
@@ -199,6 +229,7 @@ ConfigNowWriter.prototype = {
         ctx = ctx || { run: null, changes: 0, base: '' };
         var r = { inserted: 0, updated: 0, unchanged: 0, removed: 0, restored: 0 };
         var hasLink = this._hasFields(table, ['source_table', 'source_url']);
+        var hasObj = !!(ctx.objects && this._hasFields(table, ['object']));
 
         // Load existing state (sys_id, hash, presence, link) for this instance/category
         var existing = {}, nExisting = 0;
@@ -212,7 +243,8 @@ ConfigNowWriter.prototype = {
                 sys_id: ex.getUniqueValue(),
                 hash: ex.getValue('value_hash'),
                 present: ex.getValue('present') == '1' || ex.getValue('present') == 'true',
-                url: hasLink ? (ex.getValue('source_url') || '') : ''
+                url: hasLink ? (ex.getValue('source_url') || '') : '',
+                obj: hasObj ? (ex.getValue('object') || '') : ''
             };
         }
         // A category's first load on this instance is its baseline: no change rows
@@ -235,6 +267,8 @@ ConfigNowWriter.prototype = {
                 ins.setValue('item_key', it.key);
                 ins.setValue('first_seen', now);
                 this._apply(ins, it, now, hasLink, url);
+                var nob = hasObj ? this._objectFor(ctx, cat, it.key, it.name) : '';
+                if (nob) { ins.setValue('object', nob); ctx.linked++; ctx.objects.touch(nob); }
                 ins.insert();
                 r.inserted++;
                 if (log) this._logChange(ctx, cat, it.key, it.name, 'added', null, this._data(it), [], url);
@@ -242,10 +276,17 @@ ConfigNowWriter.prototype = {
             }
             if (cur.hash == it.hash && cur.present) {
                 r.unchanged++;
-                // one-off backfill of the source link (not a change)
-                if (hasLink && url && !cur.url) {
+                // one-off backfill of the source link and the object (not a change)
+                var fixLink = hasLink && url && !cur.url;
+                var want = hasObj ? this._objectFor(ctx, cat, it.key, it.name) : '';
+                var fixObj = hasObj && want != cur.obj;
+                if (fixLink || fixObj) {
                     var bf = new GlideRecord(table);
-                    if (bf.get(cur.sys_id)) { bf.setValue('source_table', it.source_table || ''); bf.setValue('source_url', url); bf.update(); }
+                    if (bf.get(cur.sys_id)) {
+                        if (fixLink) { bf.setValue('source_table', it.source_table || ''); bf.setValue('source_url', url); }
+                        if (fixObj) { bf.setValue('object', want); if (want) { ctx.linked++; ctx.objects.touch(want); } }
+                        bf.update();
+                    }
                 }
                 continue;
             }
@@ -253,6 +294,11 @@ ConfigNowWriter.prototype = {
             if (up.get(cur.sys_id)) {
                 var before = log ? this._recordData(up) : null;
                 this._apply(up, it, now, hasLink, url);
+                if (hasObj) {
+                    var uob = this._objectFor(ctx, cat, it.key, it.name);
+                    if (uob != cur.obj) { up.setValue('object', uob); if (uob) ctx.linked++; }
+                    if (uob) ctx.objects.touch(uob);
+                }
                 up.update();
                 if (!cur.present) r.restored++; else r.updated++;
                 if (log) {
@@ -274,6 +320,7 @@ ConfigNowWriter.prototype = {
                     gone.setValue('present', false);
                     gone.setValue('last_changed', now);
                     gone.update();
+                    if (hasObj && existing[key].obj) ctx.objects.touch(existing[key].obj);
                     r.removed++;
                     if (log) this._logChange(ctx, cat, key, gone.getValue('name'), 'removed', old, null, [], existing[key].url);
                 }
@@ -341,6 +388,8 @@ ConfigNowWriter.prototype = {
         c.setValue('new_data', after ? this._clip(JSON.stringify(after), 4000) : '');
         c.setValue('changed_on', ctx.now);
         if (url) c.setValue('source_url', url);
+        var cob = ctx.objects && !(cat == 'columns' && ctx.inherited[key]) ? ctx.objects.resolve(cat, key, name || key, ctx.now) : '';
+        if (cob && this._hasFields(this.T.change, ['object'])) c.setValue('object', cob);
         if (c.insert()) ctx.changes++;
     },
 
@@ -373,13 +422,13 @@ ConfigNowWriter.prototype = {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:19:41</sys_created_on>
         <sys_id>96934cee83d0d710f22797efeeaad3c4</sys_id>
-        <sys_mod_count>5</sys_mod_count>
+        <sys_mod_count>6</sys_mod_count>
         <sys_name>ConfigNowWriter</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_script_include_96934cee83d0d710f22797efeeaad3c4</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-07 17:47:40</sys_updated_on>
+        <sys_updated_on>2026-11-07 19:14:27</sys_updated_on>
     </sys_script_include>
 </record_update>
