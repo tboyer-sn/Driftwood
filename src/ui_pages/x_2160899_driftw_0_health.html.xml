@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  UI Page:  health      (endpoint: x_2160899_driftw_0_health.do)
+  Scope:    x_2160899_driftw_0
+  HTML:     this file
+  Client script: x_2160899_driftw_0_health.client.js
+  Module:   Driftwood > Health  (roles: x_2160899_driftw_0.configuration_admin)
+-->
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+<style>
+  #hl { --cn-fg: #1f2933; --cn-sub: #616e7c; --cn-bg: #fff; --cn-line: #d9e2ec; --cn-head: #f0f4f8; --cn-btn: #9aa5b1;
+        --cn-ok-bg: #e3f4e8; --cn-ok: #1d6b3a; --cn-info-bg: #e6eef6; --cn-info: #1f4e79; --cn-warn-bg: #fff3c4; --cn-warn: #8a5a00; --cn-fail-bg: #fbe3e1; --cn-fail: #9b1c15; }
+  #hl.cn-dark { color-scheme: dark; --cn-fg: #e4e7eb; --cn-sub: #9aa5b1; --cn-bg: #1b2028; --cn-line: #3a4450; --cn-head: #262d36; --cn-btn: #52606d;
+        --cn-ok-bg: #1f3a2a; --cn-ok: #7cd39a; --cn-info-bg: #1e3247; --cn-info: #9cc3ee; --cn-warn-bg: #3d3220; --cn-warn: #f0b35c; --cn-fail-bg: #43201e; --cn-fail: #ffb4ab; }
+  #hl { background: var(--cn-bg); color: var(--cn-fg); border-radius: 6px; padding: 16px 24px; max-width: 1200px; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  #hl h1 { font-size: 22px; margin: 0 0 4px 0; font-weight: 600; }
+  #hl .sub { color: var(--cn-sub); font-size: 13px; margin-bottom: 14px; }
+  #hl button { border: 1px solid var(--cn-btn); background: var(--cn-bg); color: var(--cn-fg); border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  #hl .theme { float: right; font-size: 12px; padding: 3px 9px; }
+  #hl .overall { display: inline-block; font-size: 15px; font-weight: 600; padding: 6px 14px; border-radius: 6px; margin: 4px 12px 14px 0; }
+  #hl table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  #hl th { text-align: left; background: var(--cn-head); padding: 6px 8px; border-bottom: 1px solid var(--cn-line); }
+  #hl td { padding: 6px 8px; border-bottom: 1px solid var(--cn-line); vertical-align: top; word-break: break-word; }
+  #hl .pill { display: inline-block; padding: 1px 9px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  #hl .ok { background: var(--cn-ok-bg); color: var(--cn-ok); } #hl .info { background: var(--cn-info-bg); color: var(--cn-info); }
+  #hl .warn { background: var(--cn-warn-bg); color: var(--cn-warn); } #hl .fail { background: var(--cn-fail-bg); color: var(--cn-fail); }
+  #hl .muted { color: var(--cn-sub); }
+</style>
+<div id="hl">
+  <button id="hl-theme" class="theme" type="button" title="Switch light / dark">Theme</button>
+  <h1>Driftwood Health</h1>
+  <div class="sub">Read-only self-check of this installation. The same result is available from <code>GET /api/x_2160899_driftw_0/driftwood/health</code> and is logged daily at 03:30.</div>
+  <div><span id="hl-overall" class="overall info">Checking…</span><button id="hl-refresh" type="button">Run again</button> <span id="hl-meta" class="muted"></span></div>
+  <div id="hl-result"></div>
+</div>
+</j:jelly>

@@ -1,0 +1,337 @@
+/**
+ * Script Include: ConfigNowHealth
+ * Scope:          x_2160899_driftw_0  (Driftwood)
+ * Accessible from: This application scope only
+ *
+ * v0.6 (O06) read-only self-check, shown on Driftwood > Health, returned by
+ * GET /health and run daily by "Driftwood - Health check". Each check is
+ * { area, name, status: ok | info | warn | fail, detail }; the overall status
+ * is the worst one.
+ *
+ * It reads only tables the app already reads (no new cross-scope privileges),
+ * except sys_scope_privilege for the footprint check itself: one read
+ * privilege, listed in EXPECTED_PRIVILEGES.
+ *
+ *   new ConfigNowHealth().run()        // { status, generated_at, checks, counts }
+ * ES3-safe.
+ */
+var ConfigNowHealth = Class.create();
+ConfigNowHealth.prototype = {
+
+    /* The app's cross-scope privileges (v0.5.5 repo: 58) + the health check's own read. */
+    EXPECTED_PRIVILEGES: [
+        ['Glide API: properties', 'scriptable', 'execute'], ['Glide API: user roles and groups', 'scriptable', 'execute'],
+        ['GlideDigest.getSHA256Hex', 'scriptable', 'execute'], ['GlideRecord.insert', 'scriptable', 'execute'],
+        ['GlideRecord.setValue', 'scriptable', 'execute'], ['GlideRecord.update', 'scriptable', 'execute'],
+        ['GlideSysAttachment.write', 'scriptable', 'execute'], ['RESTAPIRequest', 'scriptable', 'execute'],
+        ['RESTAPIRequestBody', 'scriptable', 'execute'], ['ScriptableServiceResultBuilder.setBody', 'scriptable', 'execute'],
+        ['ScriptableServiceResultBuilder.setHeader', 'scriptable', 'execute'], ['ScriptableServiceResultBuilder.setStatus', 'scriptable', 'execute'],
+        ['clone_data_exclude', 'sys_db_object', 'read'], ['clone_data_preserver', 'sys_db_object', 'read'], ['ecc_agent', 'sys_db_object', 'read'],
+        ['sp_page', 'sys_db_object', 'read'], ['sp_widget', 'sys_db_object', 'read'], ['sys_app', 'sys_db_object', 'read'],
+        ['sys_app_application', 'sys_db_object', 'read'], ['sys_app_module', 'sys_db_object', 'read'], ['sys_choice', 'sys_db_object', 'read'],
+        ['sys_cluster_state', 'sys_db_object', 'read'], ['sys_data_source', 'sys_db_object', 'read'], ['sys_db_object', 'sys_db_object', 'read'],
+        ['sys_dictionary', 'sys_db_object', 'read'], ['sys_hub_action_type_definition', 'sys_db_object', 'read'], ['sys_hub_flow', 'sys_db_object', 'read'],
+        ['sys_package', 'sys_db_object', 'read'], ['sys_plugins', 'sys_db_object', 'read'], ['sys_properties', 'sys_db_object', 'read'],
+        ['sys_remote_update_set', 'sys_db_object', 'read'], ['sys_report', 'sys_db_object', 'read'], ['sys_rest_message', 'sys_db_object', 'read'],
+        ['sys_scope', 'sys_db_object', 'read'], ['sys_script', 'sys_db_object', 'read'], ['sys_script_client', 'sys_db_object', 'read'],
+        ['sys_script_fix', 'sys_db_object', 'read'], ['sys_script_include', 'sys_db_object', 'read'], ['sys_security_acl', 'sys_db_object', 'read'],
+        ['sys_soap_message', 'sys_db_object', 'read'], ['sys_store_app', 'sys_db_object', 'read'], ['sys_transform_map', 'sys_db_object', 'read'],
+        ['sys_ui_action', 'sys_db_object', 'read'], ['sys_ui_page', 'sys_db_object', 'read'], ['sys_ui_policy', 'sys_db_object', 'read'],
+        ['sys_ui_policy_action', 'sys_db_object', 'read'], ['sys_ui_script', 'sys_db_object', 'read'], ['sys_update_preview_problem', 'sys_db_object', 'read'],
+        ['sys_update_set', 'sys_db_object', 'read'], ['sys_update_xml', 'sys_db_object', 'read'], ['sys_user_role', 'sys_db_object', 'read'],
+        ['sys_user_role_contains', 'sys_db_object', 'read'], ['sys_ws_definition', 'sys_db_object', 'read'], ['sys_ws_operation', 'sys_db_object', 'read'],
+        ['sysauto_script', 'sys_db_object', 'read'], ['sysevent_email_action', 'sys_db_object', 'read'], ['sysevent_script_action', 'sys_db_object', 'read'],
+        ['wf_workflow', 'sys_db_object', 'read'],
+        ['sys_scope_privilege', 'sys_db_object', 'read'] // the health check's own read (v0.6)
+    ],
+    /* Privileges deleted on 2026-11-07 (created by an installer run in the app scope): must not come back. */
+    FORBIDDEN_PRIVILEGES: ['GlideRecord.deleteRecord', 'sys_relationship', 'sys_security_acl_role', 'sys_security_operation', 'sys_security_type',
+        'sys_ui_list', 'sys_ui_list_element', 'sys_ui_related_list', 'sys_ui_related_list_entry', 'sys_ui_view'],
+
+    ADMIN_SYS_ID: '6816f79cc0a8016401c5a33be04be441', // the platform's built-in admin user
+
+    SCRIPT_INCLUDES: ['ConfigNowConfig', 'ConfigNowCollector', 'ConfigNowWriter', 'ConfigNowCompare', 'ConfigNowImporter',
+        'ConfigNowRetention', 'ConfigNowObjects', 'ConfigNowDrift', 'ConfigNowMigration', 'ConfigNowHealth'],
+    ROLES: ['configuration_read', 'configuration_read_secure', 'configuration_admin', 'admin', 'collector'],
+    JOBS: ['Driftwood - Collect current instance', 'Driftwood - Recompute drift', 'Driftwood - Purge history', 'Driftwood - Health check'],
+    FIX_SCRIPTS: ['Driftwood - Backfill tracked objects', 'Driftwood - Move plugins off the CMDB', 'Driftwood - Recompute all drift'],
+    REST_OPS: ['GET /current', 'GET /instances', 'GET /compare', 'GET /matrix', 'POST /snapshot', 'POST /collect', 'GET /health'],
+
+    initialize: function (config) {
+        this.config = config || ConfigNowConfig.get();
+        this.T = this.config.tables;
+        this.S = ConfigNowConfig.SCOPE;
+        this.P = this.S + '_';
+        this.checks = [];
+    },
+
+    run: function () {
+        var t0 = new Date().getTime();
+        this.checks = [];
+        var steps = ['_app', '_schema', '_roles', '_acls', '_jobs', '_rest', '_fixScripts', '_privileges', '_collection', '_objects', '_retention'];
+        for (var i = 0; i < steps.length; i++) {
+            try { this[steps[i]](); } catch (e) { this._add('Health', steps[i].substring(1), 'warn', 'Check failed to run: ' + (e && e.message ? e.message : e)); }
+        }
+        var rank = { ok: 0, info: 1, warn: 2, fail: 3 }, worst = 'ok', counts = { ok: 0, info: 0, warn: 0, fail: 0 };
+        for (var c = 0; c < this.checks.length; c++) {
+            counts[this.checks[c].status]++;
+            if (rank[this.checks[c].status] > rank[worst]) worst = this.checks[c].status;
+        }
+        return { schema: 'driftwood.health/0.1', status: worst, generated_at: String(new GlideDateTime().getValue()),
+            instance_name: String(gs.getProperty('instance_name') || ''), collector_version: ConfigNowConfig.COLLECTOR_VERSION || '',
+            duration_ms: new Date().getTime() - t0, counts: counts, checks: this.checks };
+    },
+
+    /** One line per warn/fail check, for the daily job's log. */
+    summary: function (res) {
+        var out = ['Driftwood health: ' + res.status.toUpperCase() + ' (' + res.counts.ok + ' ok, ' + res.counts.info + ' info, ' + res.counts.warn + ' warn, ' + res.counts.fail + ' fail)'];
+        for (var i = 0; i < res.checks.length; i++) {
+            var c = res.checks[i];
+            if (c.status == 'warn' || c.status == 'fail') out.push('  ' + c.status.toUpperCase() + ' ' + c.area + ' › ' + c.name + ': ' + c.detail);
+        }
+        return out.join('\n');
+    },
+
+    /* ---- checks ---- */
+
+    _app: function () {
+        var missing = [];
+        for (var i = 0; i < this.SCRIPT_INCLUDES.length; i++) {
+            var g = new GlideRecord('sys_script_include');
+            g.addQuery('api_name', this.S + '.' + this.SCRIPT_INCLUDES[i]);
+            g.addQuery('active', true);
+            g.setLimit(1);
+            g.query();
+            if (!g.next()) missing.push(this.SCRIPT_INCLUDES[i]);
+        }
+        this._add('App', 'Script includes', missing.length ? 'fail' : 'ok',
+            missing.length ? 'Missing or inactive: ' + missing.join(', ') : this.SCRIPT_INCLUDES.length + ' active');
+        this._add('App', 'Collector version', 'info', ConfigNowConfig.COLLECTOR_VERSION || '(not set)');
+    },
+
+    _schema: function () {
+        var want = [
+            [this.T.instance, ['instance_name', 'last_collected', 'collection_summary', 'retention_days']],
+            [this.P + 'tracked_item', ['instance', 'item_category', 'item_key', 'value_hash', 'present', 'source_url', 'object']],
+            [this.T.run, ['run_id', 'instance', 'changes_logged']],
+            [this.T.change, ['run', 'item_key', 'change_type', 'object']],
+            [this.T.object, ['object_key', 'item_category', 'item_key', 'drift_status', 'drift_kinds', 'differs_on_prod', 'parent_object']]
+        ];
+        var bad = [];
+        for (var i = 0; i < want.length; i++) {
+            var g = new GlideRecord(want[i][0]);
+            if (!g.isValid()) { bad.push(want[i][0] + ' (table missing)'); continue; }
+            var miss = [];
+            for (var f = 0; f < want[i][1].length; f++) if (!g.isValidField(want[i][1][f])) miss.push(want[i][1][f]);
+            if (miss.length) bad.push(want[i][0] + ': ' + miss.join(', '));
+        }
+        this._add('Schema', 'Tables and columns', bad.length ? 'fail' : 'ok', bad.length ? 'Run build_schema.js: ' + bad.join('; ') : want.length + ' tables with their v0.6 columns');
+        var routes = [], cats = this.config.categories || [];
+        for (var c = 0; c < cats.length; c++) routes.push(cats[c] + '=' + String(this.T[cats[c]] || '').replace(this.P, ''));
+        var ciCats = [];
+        for (var d = 0; d < cats.length; d++) if (String(this.T[cats[d]] || '').indexOf('cmdb_ci') > -1) ciCats.push(cats[d]);
+        this._add('Schema', 'Storage routing', ciCats.length ? 'warn' : 'ok',
+            ciCats.length ? 'Still routed to a CI table: ' + ciCats.join(', ') + ' (v0.6 stores every category as plain records)' : 'All categories stored as plain records');
+    },
+
+    _roles: function () {
+        var missing = [];
+        for (var i = 0; i < this.ROLES.length; i++) {
+            var g = new GlideRecord('sys_user_role');
+            g.addQuery('name', this.S + '.' + this.ROLES[i]);
+            g.setLimit(1);
+            g.query();
+            if (!g.next()) missing.push(this.ROLES[i]);
+        }
+        this._add('Security', 'Roles', missing.length ? 'fail' : 'ok', missing.length ? 'Missing: ' + missing.join(', ') : this.ROLES.length + ' roles present');
+        this._add('Security', 'Non-admin access (H06)', 'info', 'Manual: impersonate a user with only ' + this.S + '.configuration_read and open Objects, the Drift Report and an object form.');
+    },
+
+    _acls: function () {
+        var T = this.T, P = this.P;
+        var want = [T.instance, T.instance + '.*', P + 'cmdb_ci_sn_tracked_table', P + 'cmdb_ci_sn_tracked_table.*', P + 'cmdb_ci_sn_tracked_table.secure_value_hash',
+            P + 'tracked_item', P + 'tracked_item.*', P + 'tracked_item.secure_value_hash', P + 'sn_cmdb_table_config', P + 'sn_cmdb_table_config.*',
+            T.run, T.run + '.*', T.change, T.change + '.*', T.object, T.object + '.*'];
+        var have = {}, n = 0;
+        var g = new GlideRecord('sys_security_acl');
+        g.addQuery('name', 'STARTSWITH', P);
+        g.addQuery('active', true);
+        g.query();
+        while (g.next()) { have[g.getValue('name')] = true; n++; }
+        var missing = [];
+        for (var i = 0; i < want.length; i++) if (!have[want[i]]) missing.push(want[i].replace(P, ''));
+        this._add('Security', 'ACLs', missing.length ? 'fail' : (n < 24 ? 'warn' : 'ok'),
+            missing.length ? 'No active ACL for: ' + missing.join(', ') + ' – elevate and run install_ui.js' : n + ' active ACLs on the app\'s tables' + (n < 24 ? ' (24 expected)' : ''));
+    },
+
+    _jobs: function () {
+        var bad = [], runAs = {}, found = 0;
+        for (var i = 0; i < this.JOBS.length; i++) {
+            var g = new GlideRecord('sysauto_script');
+            g.addQuery('name', this.JOBS[i]);
+            g.setLimit(1);
+            g.query();
+            if (!g.next()) { bad.push(this.JOBS[i] + ' missing'); continue; }
+            found++;
+            if (String(g.getValue('active')) != '1' && String(g.getValue('active')) != 'true') bad.push(this.JOBS[i] + ' inactive');
+            // compared by sys_id: reading the user's name would add a sys_user read privilege
+            var rid = String(g.getValue('run_as') || '');
+            var ra = !rid ? '(not set)' : (rid == this.ADMIN_SYS_ID ? 'admin' : 'user ' + rid);
+            runAs[ra] = (runAs[ra] || 0) + 1;
+        }
+        this._add('Jobs', 'Scheduled jobs', bad.length ? 'warn' : 'ok', bad.length ? bad.join('; ') : found + ' active (collect 02:15, drift 02:45, purge 03:15, health 03:30)');
+        var ras = [];
+        for (var k in runAs) ras.push(k);
+        var adminOnly = ras.length == 1 && ras[0] == 'admin';
+        this._add('Jobs', 'Run as (H07)', adminOnly ? 'info' : 'ok', 'Jobs run as: ' + ras.join(', ') +
+            (adminOnly ? '. Before others install Driftwood, run them as a collector service account with ' + this.S + '.collector.' : ''));
+    },
+
+    _rest: function () {
+        var api = this._one('sys_ws_definition', 'service_id', 'driftwood');
+        if (!api) { this._add('REST', 'API /driftwood', 'fail', 'Not found – run install_ui.js'); }
+        else {
+            var active = String(api.getValue('active')) == '1' || String(api.getValue('active')) == 'true';
+            var ops = {}, o = new GlideRecord('sys_ws_operation');
+            o.addQuery('web_service_definition', api.getUniqueValue());
+            o.addQuery('active', true);
+            o.query();
+            while (o.next()) ops[o.getValue('http_method') + ' ' + o.getValue('relative_path')] = true;
+            var miss = [];
+            for (var i = 0; i < this.REST_OPS.length; i++) if (!ops[this.REST_OPS[i]]) miss.push(this.REST_OPS[i]);
+            this._add('REST', 'API /driftwood', !active || miss.length ? 'fail' : 'ok',
+                (!active ? 'API inactive. ' : '') + (miss.length ? 'Missing or inactive: ' + miss.join(', ') : this.REST_OPS.length + ' operations active at ' + (api.getValue('base_uri') || '/api/' + this.S + '/driftwood')));
+        }
+        var old = this._one('sys_ws_definition', 'service_id', 'configurationnow');
+        var oldActive = old && (String(old.getValue('active')) == '1' || String(old.getValue('active')) == 'true');
+        this._add('REST', 'Old API /configurationnow', oldActive ? 'warn' : 'ok', !old ? 'Not present' : (oldActive ? 'Still active – run install_ui.js' : 'Inactive (to be deleted)'));
+    },
+
+    _fixScripts: function () {
+        var miss = [];
+        for (var i = 0; i < this.FIX_SCRIPTS.length; i++) if (!this._one('sys_script_fix', 'name', this.FIX_SCRIPTS[i])) miss.push(this.FIX_SCRIPTS[i]);
+        this._add('App', 'Fix scripts', miss.length ? 'warn' : 'ok', miss.length ? 'Missing: ' + miss.join(', ') : this.FIX_SCRIPTS.length + ' present');
+    },
+
+    _privileges: function () {
+        var g = new GlideRecord('sys_scope_privilege');
+        if (!g.isValid()) { this._add('Footprint', 'Cross-scope privileges', 'info', 'sys_scope_privilege not readable here'); return; }
+        var app = this._one('sys_scope', 'scope', this.S);
+        if (!app) { this._add('Footprint', 'Cross-scope privileges', 'warn', 'App scope record not found'); return; }
+        var exp = {}, i;
+        for (i = 0; i < this.EXPECTED_PRIVILEGES.length; i++) exp[this.EXPECTED_PRIVILEGES[i].join('|')] = true;
+        var forb = {};
+        for (i = 0; i < this.FORBIDDEN_PRIVILEGES.length; i++) forb[this.FORBIDDEN_PRIVILEGES[i]] = true;
+        var extra = [], bad = [], seen = {}, n = 0, denied = [];
+        g.addQuery('source_scope', app.getUniqueValue());
+        g.query();
+        while (g.next()) {
+            n++;
+            var k = [g.getValue('target_name'), g.getValue('target_type'), g.getValue('operation')].join('|');
+            seen[k] = true;
+            if (String(g.getValue('status')) != 'allowed') denied.push(g.getValue('target_name') + ' (' + g.getValue('status') + ')');
+            if (forb[g.getValue('target_name')]) bad.push(g.getValue('target_name') + ' ' + g.getValue('operation'));
+            else if (!exp[k]) extra.push(g.getValue('target_name') + ' ' + g.getValue('operation'));
+        }
+        var missing = 0;
+        for (var e in exp) if (!seen[e]) missing++;
+        var st = bad.length ? 'fail' : (extra.length || denied.length ? 'warn' : 'ok');
+        this._add('Footprint', 'Cross-scope privileges', st, n + ' privilege(s); expected ' + this.EXPECTED_PRIVILEGES.length +
+            (bad.length ? '. REMOVED ONES CAME BACK (an installer or script ran in the Driftwood scope): ' + bad.join(', ') : '') +
+            (extra.length ? '. Not expected: ' + extra.join(', ') : '') +
+            (denied.length ? '. Not allowed: ' + denied.join(', ') : '') +
+            (missing ? '. ' + missing + ' expected one(s) not created yet (they appear on first use)' : ''));
+    },
+
+    _collection: function () {
+        var local = String(gs.getProperty('instance_name') || '');
+        var inst = this._one(this.T.instance, 'instance_name', local);
+        var nInst = this._count(this.T.instance, '');
+        this._add('Data', 'Instances', nInst > 1 ? 'ok' : 'info', nInst + ' instance(s)' + (nInst < 2 ? ' – import a snapshot to compare' : ''));
+        if (!inst) { this._add('Data', 'Last collection', 'warn', 'This instance (' + local + ') has never been collected – Collect now'); return; }
+        var last = String(inst.getValue('last_collected') || '');
+        var age = last ? this._ageHours(last) : null;
+        var st = String(inst.getValue('collection_status') || '');
+        this._add('Data', 'Last collection', age === null || age > 36 ? 'warn' : (st == 'completed_with_warnings' ? 'warn' : 'ok'),
+            (last ? last + ' UTC (' + Math.round(age) + ' h ago)' : 'never') + ', ' + (st || 'no status') + (age > 36 ? ' – the daily collection job may not be running' : ''));
+    },
+
+    _objects: function () {
+        var T = this.T;
+        if (!T.object || !new GlideRecord(T.object).isValid()) return;
+        var nObj = this._count(T.object, '');
+        var notCmp = this._count(T.object, 'drift_status=not_compared^ORdrift_statusISEMPTY');
+        this._add('Data', 'Tracked objects', nObj ? 'ok' : 'warn', nObj ? nObj + ' object(s)' : 'No objects – run the fix script "Driftwood - Backfill tracked objects"');
+        this._add('Data', 'Drift computed', notCmp ? 'warn' : 'ok', notCmp ? notCmp + ' object(s) not compared yet – run "Driftwood - Recompute all drift"' : 'Every object has a drift status');
+        // observations without an object (inherited columns are expected to have none)
+        var unl = this._count(this.P + 'tracked_item', 'objectISEMPTY^item_category!=columns');
+        var unlCols = this._count(this.P + 'tracked_item', 'objectISEMPTY^item_category=columns');
+        this._add('Data', 'Observations linked', unl ? 'warn' : 'ok', unl ? unl + ' observation(s) without an object – run "Driftwood - Backfill tracked objects"' :
+            'All linked' + (unlCols ? ' (' + unlCols + ' inherited column(s) have none, as designed)' : ''));
+        // objects with no observation at all
+        var withObs = {};
+        var ga = new GlideAggregate(this.P + 'tracked_item');
+        ga.addQuery('object', '!=', '');
+        ga.addAggregate('COUNT');
+        ga.groupBy('object');
+        ga.query();
+        while (ga.next()) withObs[ga.getValue('object')] = true;
+        var orphans = 0, og = new GlideRecord(T.object);
+        og.query();
+        while (og.next()) if (!withObs[og.getUniqueValue()]) orphans++;
+        this._add('Data', 'Objects without observations', orphans ? 'info' : 'ok', orphans ? orphans + ' object(s) no longer observed anywhere (kept for history)' : 'None');
+        var ci = new GlideRecord(this.P + 'cmdb_ci_sn_tracked_plugin');
+        if (ci.isValid()) {
+            var nCi = this._count(this.P + 'cmdb_ci_sn_tracked_plugin', '');
+            this._add('Data', 'Plugin CIs (O05)', nCi ? 'warn' : 'ok', nCi ? nCi + ' per-instance plugin CI(s) left – run "Driftwood - Move plugins off the CMDB", then Delete All Records' : 'None left');
+        }
+    },
+
+    _retention: function () {
+        var days = this.config.retentionDays || 180;
+        var oldest = '', g = new GlideRecord(this.T.run);
+        if (!g.isValid()) return;
+        g.orderBy('collected_at');
+        g.setLimit(1);
+        g.query();
+        if (g.next()) oldest = String(g.getValue('collected_at') || '');
+        var age = oldest ? this._ageHours(oldest) / 24 : 0;
+        var late = oldest && age > days + 3;
+        this._add('Data', 'History retention', late ? 'warn' : 'ok', days + ' day(s) by default; ' + this._count(this.T.run, '') + ' run(s), oldest ' + (oldest || 'none') +
+            (late ? ' – older than the retention period: is "Driftwood - Purge history" running?' : ''));
+    },
+
+    /* ---- helpers ---- */
+
+    _add: function (area, name, status, detail) { this.checks.push({ area: area, name: name, status: status, detail: String(detail) }); },
+
+    _one: function (table, field, value) {
+        var g = new GlideRecord(table);
+        if (!g.isValid()) return null;
+        g.addQuery(field, value);
+        g.setLimit(1);
+        g.query();
+        return g.next() ? g : null;
+    },
+
+    _count: function (table, q) {
+        var ga = new GlideAggregate(table);
+        if (!ga.isValid()) return 0;
+        if (q) ga.addEncodedQuery(q);
+        ga.addAggregate('COUNT');
+        ga.query();
+        return ga.next() ? parseInt(ga.getAggregate('COUNT'), 10) : 0;
+    },
+
+    /** Hours since a 'YYYY-MM-DD HH:MM:SS' UTC value. */
+    _ageHours: function (v) {
+        var m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(String(v));
+        if (!m) return null;
+        var t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+        var n = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(String(new GlideDateTime().getValue()));
+        var now = n ? Date.UTC(+n[1], +n[2] - 1, +n[3], +n[4], +n[5], +n[6]) : new Date().getTime();
+        return (now - t) / 3600000;
+    },
+
+    type: 'ConfigNowHealth'
+};

@@ -1,0 +1,184 @@
+/**
+ * Script Include: ConfigNowDrift
+ * Scope:          x_2160899_driftw_0  (Driftwood)
+ * Accessible from: This application scope only
+ *
+ * v0.6 stored drift: writes each tracked object's drift fields from the
+ * stored observations, with the same rules as the all-instances comparison
+ * (ConfigNowCompare.compareMany): reference = the baseline instance if it has
+ * the item, else the first instance in column order that does; field-level
+ * differences; ignore list; drift kinds; optional sys_id check.
+ *
+ *   drift_status   same | differs | missing (absent on a compared instance)
+ *                  | single (fewer than 2 instances collected the category)
+ *                  | ignored (expected difference, config.compareIgnore)
+ *   drift_kinds    schema,config,clone,sys_id,count,version (comma list)
+ *   present_count / instance_count, differs_on / missing_on (instance names),
+ *   differs_on_prod (a Prod instance differs or lacks it), baseline_instance
+ *   (the reference instance), drift_changed (when drift_status last changed),
+ *   last_compared (when the drift fields were last written)
+ *
+ * Change-only: an object is written only when one of those values changes.
+ *
+ *   new ConfigNowDrift().recompute()                         // all objects
+ *   new ConfigNowDrift().recompute({ objectIds: [...] })     // touched ones
+ *   new ConfigNowDrift().recompute({ categories: ['tables'] })
+ *   new ConfigNowDrift().recompute({ dryRun: true })         // count only
+ * ES3-safe.
+ */
+var ConfigNowDrift = Class.create();
+ConfigNowDrift.prototype = {
+
+    FIELDS: ['drift_status', 'drift_kinds', 'present_count', 'instance_count', 'differs_on', 'missing_on', 'differs_on_prod', 'baseline_instance'],
+
+    initialize: function (config) {
+        this.config = config || ConfigNowConfig.get();
+        this.T = this.config.tables;
+        this.cmp = new ConfigNowCompare({ config: this.config });
+    },
+
+    available: function () {
+        if (!this.T.object) return false;
+        var g = new GlideRecord(this.T.object);
+        return g.isValid() && g.isValidField('drift_status');
+    },
+
+    /**
+     * opts.objectIds  – only these objects (after a persist); omitted = all
+     * opts.categories – also every object of these categories (e.g. a
+     *                   category's first load on an instance changes the
+     *                   instance count of all its objects)
+     * opts.dryRun     – compute and count, write nothing
+     * opts.sysIds     – sys_id drift (default: config.compareSysIds)
+     */
+    recompute: function (opts) {
+        opts = opts || {};
+        var t0 = new Date().getTime();
+        var res = { dry_run: !!opts.dryRun, evaluated: 0, changed: 0, status_changed: 0, by_status: {}, mode: '', text: '' };
+        var lines = [];
+        if (!this.available()) { res.text = 'Driftwood drift: ' + (this.T.object || 'tracked_object') + ' is not installed – nothing to do.'; return res; }
+        var now = String(new GlideDateTime().getValue());
+
+        var only = null, fullCats = {}, i;
+        if (opts.objectIds) { only = {}; for (i = 0; i < opts.objectIds.length; i++) only[opts.objectIds[i]] = true; }
+        for (i = 0; i < (opts.categories || []).length; i++) fullCats[opts.categories[i]] = true;
+        res.mode = only ? 'touched' : 'full';
+
+        var insts = this.cmp.listInstances();
+        var ignore = this.cmp._buildIgnore(insts);
+        this.cmp._checkSysIds = opts.sysIds === undefined ? !!this.config.compareSysIds : !!opts.sysIds;
+        var prod = [];
+        for (i = 0; i < insts.length; i++) prod.push(this._isProd(insts[i].environment));
+
+        // which categories to visit
+        var cats = this.config.categories || [], todo = [];
+        var objCats = only ? this._categoriesOf(only) : null;
+        for (i = 0; i < cats.length; i++) {
+            if (!this.T[cats[i]]) continue;
+            if (!only || objCats[cats[i]] || fullCats[cats[i]]) todo.push(cats[i]);
+        }
+
+        for (var c = 0; c < todo.length; c++) {
+            var cat = todo[c], table = this.T[cat];
+            var maps = [], coll = [], nColl = 0;
+            for (i = 0; i < insts.length; i++) {
+                coll.push(this.cmp._collected(insts[i], cat));
+                if (coll[i]) nColl++;
+                maps.push(coll[i] ? this.cmp._load(table, insts[i].sys_id, cat) : {});
+            }
+            var og = new GlideRecord(this.T.object);
+            og.addQuery('item_category', cat);
+            og.query();
+            while (og.next()) {
+                if (only && !fullCats[cat] && !only[og.getUniqueValue()]) continue;
+                var v = this._evaluate(cat, String(og.getValue('item_key')), insts, maps, coll, nColl, ignore, prod);
+                res.evaluated++;
+                res.by_status[v.drift_status] = (res.by_status[v.drift_status] || 0) + 1;
+                var diff = false, statusDiff = (og.getValue('drift_status') || '') != v.drift_status;
+                for (var f = 0; f < this.FIELDS.length; f++) {
+                    if (this._norm(og.getValue(this.FIELDS[f])) != this._norm(v[this.FIELDS[f]])) { diff = true; break; }
+                }
+                if (!diff) continue;
+                res.changed++;
+                if (statusDiff) res.status_changed++;
+                if (opts.dryRun) continue;
+                for (var w = 0; w < this.FIELDS.length; w++) og.setValue(this.FIELDS[w], v[this.FIELDS[w]]);
+                og.setValue('last_compared', now);
+                if (statusDiff) og.setValue('drift_changed', now);
+                og.update();
+            }
+        }
+        res.ms = new Date().getTime() - t0;
+        var st = [];
+        for (var s in res.by_status) st.push(s + ' ' + res.by_status[s]);
+        lines.push('Driftwood drift (' + res.mode + (opts.dryRun ? ', DRY RUN' : '') + '): ' + res.evaluated + ' object(s) evaluated, ' +
+            res.changed + (opts.dryRun ? ' would change' : ' changed') + ' (' + res.status_changed + ' status), ' + res.ms + ' ms. ' + (st.length ? 'Now: ' + st.join(', ') + '.' : ''));
+        res.text = lines.join('\n');
+        return res;
+    },
+
+    /** Drift values for one category + key (the matrix row rules). */
+    _evaluate: function (cat, key, insts, maps, coll, nColl, ignore, prod) {
+        var v = { drift_status: 'same', drift_kinds: '', present_count: 0, instance_count: nColl, differs_on: '', missing_on: '', differs_on_prod: 'false', baseline_instance: '' };
+        var i, present = [];
+        for (i = 0; i < maps.length; i++) if (coll[i] && maps[i][key]) present.push(i);
+        v.present_count = present.length;
+        if (ignore[cat + '|' + key]) { v.drift_status = 'ignored'; return v; }
+        if (nColl < 2) { v.drift_status = 'single'; if (present.length) v.baseline_instance = insts[present[0]].sys_id; return v; }
+        var missing = [], differs = [], fields = [], fieldSet = {}, onProd = false;
+        var ref = present.length ? present[0] : -1; // baseline (column 0) first when it has the item
+        if (ref >= 0) v.baseline_instance = insts[ref].sys_id;
+        for (i = 0; i < maps.length; i++) {
+            if (!coll[i]) continue;
+            var it = maps[i][key];
+            if (!it) { missing.push(insts[i].instance_name); if (prod[i]) onProd = true; continue; }
+            if (i == ref) continue;
+            var f = this.cmp._diffFields(maps[ref][key], it, cat);
+            if (!f.length) continue;
+            differs.push(insts[i].instance_name);
+            if (prod[i]) onProd = true;
+            for (var x = 0; x < f.length; x++) if (!fieldSet[f[x]]) { fieldSet[f[x]] = true; fields.push(f[x]); }
+        }
+        // the reference itself is the odd one out when it is Prod and others differ
+        if (ref >= 0 && prod[ref] && (differs.length || missing.length)) onProd = true;
+        v.drift_status = missing.length ? 'missing' : (differs.length ? 'differs' : 'same');
+        v.drift_kinds = this.cmp._kinds(fields, cat).join(',');
+        v.differs_on = this._clip(differs.join(', '), 1000);
+        v.missing_on = this._clip(missing.join(', '), 1000);
+        v.differs_on_prod = onProd && v.drift_status != 'same' ? 'true' : 'false';
+        return v;
+    },
+
+    /** Environment that counts as Prod: starts with "prod" (not pre-prod / sub-prod). */
+    _isProd: function (env) {
+        var e = String(env || '').toLowerCase().replace(/[^a-z]/g, '');
+        return e.indexOf('prod') == 0;
+    },
+
+    _categoriesOf: function (ids) {
+        var out = {}, list = [];
+        for (var k in ids) list.push(k);
+        for (var s = 0; s < list.length; s += 500) {
+            var g = new GlideRecord(this.T.object);
+            g.addQuery('sys_id', 'IN', list.slice(s, s + 500).join(','));
+            g.query();
+            while (g.next()) out[g.getValue('item_category')] = true;
+        }
+        return out;
+    },
+
+    _norm: function (x) {
+        if (x === null || x === undefined) return '';
+        var s = String(x);
+        if (s == '1' || s == 'true') return 'true';
+        if (s == '0' || s == 'false') return 'false';
+        return s;
+    },
+
+    _clip: function (s, n) {
+        s = s == null ? '' : String(s);
+        return s.length > n ? s.substring(0, n) : s;
+    },
+
+    type: 'ConfigNowDrift'
+};
