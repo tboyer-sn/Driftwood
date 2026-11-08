@@ -25,6 +25,7 @@
             </choice>
         </element>
         <element label="Changed fields" max_length="1000" name="changed_fields" type="string"/>
+        <element label="Object" max_length="32" name="object" reference="x_2160899_driftw_0_tracked_object" type="reference"/>
         <element label="Before" max_length="4000" name="old_data" type="string"/>
         <element label="After" max_length="4000" name="new_data" type="string"/>
         <element label="Changed on" max_length="40" name="changed_on" type="glide_date_time"/>
@@ -34,6 +35,9 @@
             <element name="instance"/>
         </index>
         <index name="index2">
+            <element name="object"/>
+        </index>
+        <index name="index3">
             <element name="run"/>
         </index>
     </element>

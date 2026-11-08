@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_fix">
+    <sys_script_fix action="INSERT_OR_UPDATE">
+        <before>false</before>
+        <description>v0.6 (O05): copies per-instance plugin CIs to plain tracked items and verifies; never deletes. Idempotent.</description>
+        <name>Driftwood - Move plugins off the CMDB</name>
+        <record_for_rollback>false</record_for_rollback>
+        <script><![CDATA[/* Driftwood - Move plugins off the CMDB (v0.6, O05)
+ * Copies every per-instance plugin record stored as a CI to the plain
+ * tracked_item table (first seen, last changed, presence, links and the
+ * tracked object are kept). Idempotent; it never deletes the CIs. When it
+ * reports SAFE TO DELETE, delete them with "Delete All Records" on the
+ * x_2160899_driftw_0_cmdb_ci_sn_tracked_plugin table. On an instance that never
+ * stored plugins as CIs it does nothing.
+ *
+ * Dry run first: Scripts - Background, script scope Driftwood:
+ *   gs.info(new ConfigNowMigration().movePlugins({ dryRun: true }).text);
+ */
+gs.info(new ConfigNowMigration().movePlugins().text);
+]]></script>
+        <sys_class_name>sys_script_fix</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-08 04:34:12</sys_created_on>
+        <sys_id>01f32aab835cdf10f22797efeeaad3a2</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>Driftwood - Move plugins off the CMDB</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_script_fix_01f32aab835cdf10f22797efeeaad3a2</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-08 05:21:47</sys_updated_on>
+        <unloadable>false</unloadable>
+    </sys_script_fix>
+</record_update>

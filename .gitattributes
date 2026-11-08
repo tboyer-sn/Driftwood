@@ -1,0 +1,5 @@
+# Keep Unix line endings in the repo and in every working copy (Windows included):
+# build.sh needs LF, and the ServiceNow app folder must stay byte-for-byte as Studio writes it.
+* text=auto eol=lf
+*.zip binary
+*.png binary

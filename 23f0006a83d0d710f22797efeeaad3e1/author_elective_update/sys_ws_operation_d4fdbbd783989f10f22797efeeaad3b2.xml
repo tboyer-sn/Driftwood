@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_operation">
+    <sys_ws_operation action="DELETE">
+        <active>true</active>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_operation_uri/>
+        <enforce_acl/>
+        <http_method>POST</http_method>
+        <name>collect</name>
+        <operation_script><![CDATA[/**
+ * Scripted REST resource: POST /collect
+ * Collects this instance's configuration and saves it (same as the Collect now
+ * UI action on the instance CI). Used by the Current Instance Settings page.
+ * Requires x_2160899_driftw_0.configuration_admin (checked here as well).
+ */
+(function process(request, response) {
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_admin')) {
+        response.setStatus(403);
+        response.setBody({ error: 'Requires role x_2160899_driftw_0.configuration_admin' });
+        return;
+    }
+    try {
+        var snapshot = new ConfigNowCollector({ incremental: true }).collect();
+        var res = new ConfigNowWriter().persist(snapshot);
+        response.setStatus(200);
+        response.setBody({
+            instance_name: snapshot.instance ? snapshot.instance.instance_name : '',
+            collected_at: snapshot.collected_at,
+            duration_ms: snapshot.duration_ms,
+            totals: res.totals,
+            run_id: res.run_id || '',
+            changes_logged: res.changes_logged || 0,
+            baseline: res.baseline || [],
+            warnings: snapshot.warnings ? snapshot.warnings.length : 0
+        });
+    } catch (e) {
+        response.setStatus(500);
+        response.setBody({ error: String(e && e.message ? e.message : e) });
+    }
+})(request, response);
+]]></operation_script>
+        <operation_uri>/api/x_2160899_driftw_0/configurationnow/collect</operation_uri>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <relative_path>/collect</relative_path>
+        <request_example/>
+        <requires_acl_authorization>false</requires_acl_authorization>
+        <requires_authentication>true</requires_authentication>
+        <requires_snc_internal_role>true</requires_snc_internal_role>
+        <short_description/>
+        <support_trailing_slash>false</support_trailing_slash>
+        <sys_class_name>sys_ws_operation</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 16:28:54</sys_created_on>
+        <sys_id>d4fdbbd783989f10f22797efeeaad3b2</sys_id>
+        <sys_mod_count>1</sys_mod_count>
+        <sys_name>collect</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_ws_operation_d4fdbbd783989f10f22797efeeaad3b2</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 16:55:13</sys_updated_on>
+        <web_service_definition display_value="ConfigurationNOW">9234cc628314d710f22797efeeaad34b</web_service_definition>
+        <web_service_version/>
+    </sys_ws_operation>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</application>
+        <file_path/>
+        <instance_id>4f112ca9935853dc611eddd548373ca4</instance_id>
+        <instance_name>dev466156</instance_name>
+        <merge_base/>
+        <name>sys_ws_operation_d4fdbbd783989f10f22797efeeaad3b2</name>
+        <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update table="sys_ws_operation"&gt;&lt;sys_ws_operation action="INSERT_OR_UPDATE"&gt;&lt;active&gt;true&lt;/active&gt;&lt;consumes&gt;application/json,application/xml,text/xml&lt;/consumes&gt;&lt;consumes_customized&gt;false&lt;/consumes_customized&gt;&lt;default_operation_uri/&gt;&lt;enforce_acl/&gt;&lt;http_method&gt;POST&lt;/http_method&gt;&lt;name&gt;collect&lt;/name&gt;&lt;operation_script&gt;&lt;![CDATA[/**
+ * Scripted REST resource: POST /collect
+ * Collects this instance's configuration and saves it (same as the Collect now
+ * UI action on the instance CI). Used by the Current Instance Settings page.
+ * Requires x_2160899_driftw_0.configuration_admin (checked here as well).
+ */
+(function process(request, response) {
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_admin')) {
+        response.setStatus(403);
+        response.setBody({ error: 'Requires role x_2160899_driftw_0.configuration_admin' });
+        return;
+    }
+    try {
+        var snapshot = new ConfigNowCollector({ incremental: true }).collect();
+        var res = new ConfigNowWriter().persist(snapshot);
+        response.setStatus(200);
+        response.setBody({
+            instance_name: snapshot.instance ? snapshot.instance.instance_name : '',
+            collected_at: snapshot.collected_at,
+            duration_ms: snapshot.duration_ms,
+            totals: res.totals,
+            run_id: res.run_id || '',
+            changes_logged: res.changes_logged || 0,
+            baseline: res.baseline || [],
+            warnings: snapshot.warnings ? snapshot.warnings.length : 0
+        });
+    } catch (e) {
+        response.setStatus(500);
+        response.setBody({ error: String(e &amp;&amp; e.message ? e.message : e) });
+    }
+})(request, response);
+]]&gt;&lt;/operation_script&gt;&lt;operation_uri&gt;/api/x_2160899_driftw_0/configurationnow/collect&lt;/operation_uri&gt;&lt;produces&gt;application/json,application/xml,text/xml&lt;/produces&gt;&lt;produces_customized&gt;false&lt;/produces_customized&gt;&lt;relative_path&gt;/collect&lt;/relative_path&gt;&lt;request_example/&gt;&lt;requires_acl_authorization&gt;false&lt;/requires_acl_authorization&gt;&lt;requires_authentication&gt;true&lt;/requires_authentication&gt;&lt;requires_snc_internal_role&gt;true&lt;/requires_snc_internal_role&gt;&lt;short_description/&gt;&lt;support_trailing_slash&gt;false&lt;/support_trailing_slash&gt;&lt;sys_class_name&gt;sys_ws_operation&lt;/sys_class_name&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2026-11-07 16:28:54&lt;/sys_created_on&gt;&lt;sys_id&gt;d4fdbbd783989f10f22797efeeaad3b2&lt;/sys_id&gt;&lt;sys_mod_count&gt;1&lt;/sys_mod_count&gt;&lt;sys_name&gt;collect&lt;/sys_name&gt;&lt;sys_package display_value="Driftwood" source="x_2160899_driftw_0"&gt;23f0006a83d0d710f22797efeeaad3e1&lt;/sys_package&gt;&lt;sys_policy/&gt;&lt;sys_scope display_value="Driftwood"&gt;23f0006a83d0d710f22797efeeaad3e1&lt;/sys_scope&gt;&lt;sys_update_name&gt;sys_ws_operation_d4fdbbd783989f10f22797efeeaad3b2&lt;/sys_update_name&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2026-11-07 16:55:13&lt;/sys_updated_on&gt;&lt;web_service_definition display_value="ConfigurationNOW"&gt;9234cc628314d710f22797efeeaad34b&lt;/web_service_definition&gt;&lt;web_service_version/&gt;&lt;/sys_ws_operation&gt;&lt;/record_update&gt;</payload>
+        <payload_hash>2020952240</payload_hash>
+        <record_name>collect</record_name>
+        <reverted_from/>
+        <source>1018b13e83109b10f22797efeeaad38f</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 16:55:13</sys_created_on>
+        <sys_id>c6f384e383d89f10f22797efeeaad382</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>1a1b6ef87f40000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 16:55:13</sys_updated_on>
+        <type>Scripted REST Resource</type>
+        <update_guid>c2f384e357d89f1085c03467b71bb281</update_guid>
+        <update_guid_history>c2f384e357d89f1085c03467b71bb281:2020952240,18fdbbd722989f1013c5abfbe9b00cb9:-1646445628</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete/>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-08 05:12:31</sys_created_on>
+        <sys_db_object display_value="" name="sys_ws_operation">sys_ws_operation</sys_db_object>
+        <sys_id>1196b5d8aac24574aae7cb3346b82931</sys_id>
+        <sys_metadata>d4fdbbd783989f10f22797efeeaad3b2</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>collect</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_scope_delete display_value="">4833286af809459cad5860bb9c581ce4</sys_scope_delete>
+        <sys_update_name>sys_ws_operation_d4fdbbd783989f10f22797efeeaad3b2</sys_update_name>
+        <sys_update_version display_value="sys_ws_operation_d4fdbbd783989f10f22797efeeaad3b2">c6f384e383d89f10f22797efeeaad382</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-08 05:12:31</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

@@ -25,6 +25,7 @@
         <element label="Item attributes" max_length="4000" name="item_attributes" type="string"/>
         <element label="Source table" max_length="80" name="source_table" type="string"/>
         <element label="Last changed" max_length="40" name="last_changed" type="glide_date_time"/>
+        <element label="Object" max_length="32" name="object" reference="x_2160899_driftw_0_tracked_object" type="reference"/>
         <element label="Item state" max_length="100" name="item_state" type="string"/>
         <element label="Runtime" max_length="4000" name="runtime" type="string"/>
         <element label="Source record" max_length="1024" name="source_url" type="url"/>
@@ -34,6 +35,9 @@
             <element name="instance"/>
             <element name="item_category"/>
             <element name="item_key"/>
+        </index>
+        <index name="index2">
+            <element name="object"/>
         </index>
     </element>
 </database>

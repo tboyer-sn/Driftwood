@@ -1,0 +1,134 @@
+/**
+ * Script Include: ConfigNowMigration
+ * Scope:          x_2160899_driftw_0  (Driftwood)
+ * Accessible from: This application scope only
+ *
+ * v0.6 (O05): per-instance plugin records leave the CMDB. Copies every plugin
+ * observation stored as a CI (x_2160899_driftw_0_cmdb_ci_sn_tracked_plugin) to
+ * the plain tracked_item table, keeping first seen, last changed, presence,
+ * value, links and the tracked-object reference.
+ *
+ *   new ConfigNowMigration().movePlugins({ dryRun: true })   // report only
+ *   new ConfigNowMigration().movePlugins()                   // copy
+ *
+ * Idempotent: a plain row that already exists for the same instance + key
+ * (copied before, or written by a collection after the routing switched) is
+ * kept; only an earlier first_seen and an empty Object are carried over.
+ *
+ * It never deletes the CIs: deleting CMDB records from this scope would add a
+ * cross-scope privilege (GlideRecord.deleteRecord) to the app. When every CI
+ * has a plain copy the report says so; an admin then deletes them with
+ * "Delete All Records" on the plugin CI table (RUNBOOK O05). On an instance
+ * that never stored plugins as CIs it does nothing. ES3-safe.
+ */
+var ConfigNowMigration = Class.create();
+ConfigNowMigration.prototype = {
+
+    COPY: ['name', 'item_value', 'item_version', 'item_state', 'value_hash', 'item_attributes', 'runtime', 'source_sys_id',
+        'source_table', 'source_url', 'is_secure', 'secure_value_hash', 'present', 'first_seen', 'last_changed', 'object'],
+
+    initialize: function (config) {
+        this.config = config || ConfigNowConfig.get();
+        this.T = this.config.tables;
+        this.ciTable = ConfigNowConfig.SCOPE + '_cmdb_ci_sn_tracked_plugin';
+        this.plain = ConfigNowConfig.SCOPE + '_tracked_item';
+    },
+
+    movePlugins: function (opts) {
+        opts = opts || {};
+        var dry = !!opts.dryRun;
+        var res = { dry_run: dry, cis: 0, copied: 0, merged: 0, already: 0, safe_to_delete: false, routing: this.T.plugins, by_instance: {}, text: '' };
+        var lines = ['=== Driftwood: move plugins to plain records (' + (dry ? 'DRY RUN – nothing will change' : 'LIVE') + ') ==='];
+        var ci = new GlideRecord(this.ciTable), pl = new GlideRecord(this.plain);
+        if (!ci.isValid() || !pl.isValid()) { res.text = lines.concat(['Nothing to do: ' + (!ci.isValid() ? this.ciTable : this.plain) + ' does not exist.']).join('\n'); res.safe_to_delete = true; return res; }
+
+        // existing plain plugin rows: instance|key -> sys_id
+        var have = {};
+        var h = new GlideRecord(this.plain);
+        h.addQuery('item_category', 'plugins');
+        h.query();
+        while (h.next()) have[h.getValue('instance') + '|' + h.getValue('item_key')] = h.getUniqueValue();
+
+        var insts = {};
+        ci.addQuery('item_category', 'plugins');
+        ci.query();
+        while (ci.next()) {
+            res.cis++;
+            var inst = ci.getValue('instance'), key = ci.getValue('item_key');
+            var bi = res.by_instance[inst] || (res.by_instance[inst] = { cis: 0, copied: 0, merged: 0, already: 0 });
+            bi.cis++;
+            insts[inst] = true;
+            var k = inst + '|' + key;
+            if (have[k]) {
+                // copied earlier, or written by a collection after the switch: keep it,
+                // carry over the older first_seen and a missing Object only
+                var t = new GlideRecord(this.plain);
+                if (!t.get(have[k])) continue;
+                var fs = ci.getValue('first_seen'), tfs = t.getValue('first_seen');
+                var olderSeen = fs && (!tfs || fs < tfs);
+                var obj = this._has(ci, 'object') && ci.getValue('object') && this._has(t, 'object') && !t.getValue('object');
+                if (!olderSeen && !obj) { res.already++; bi.already++; continue; }
+                res.merged++; bi.merged++;
+                if (dry) continue;
+                if (olderSeen) t.setValue('first_seen', fs);
+                if (obj) t.setValue('object', ci.getValue('object'));
+                t.update();
+                continue;
+            }
+            res.copied++; bi.copied++;
+            if (dry) { have[k] = 'dry-run'; continue; }
+            var n = new GlideRecord(this.plain);
+            n.initialize();
+            n.setValue('instance', inst);
+            n.setValue('item_category', 'plugins');
+            n.setValue('item_key', key);
+            for (var f = 0; f < this.COPY.length; f++) {
+                var fld = this.COPY[f];
+                if (!this._has(n, fld) || !this._has(ci, fld)) continue;
+                var v = ci.getValue(fld);
+                if (v !== null && v !== '') n.setValue(fld, v);
+            }
+            var id = n.insert();
+            if (id) have[k] = id;
+            else lines.push('  !! insert failed for ' + key + ' on instance ' + inst);
+        }
+
+        // verification: every CI has a plain row now (in a dry run: would have)
+        var missing = 0;
+        var v2 = new GlideRecord(this.ciTable);
+        v2.addQuery('item_category', 'plugins');
+        v2.query();
+        while (v2.next()) if (!have[v2.getValue('instance') + '|' + v2.getValue('item_key')]) missing++;
+        res.safe_to_delete = missing == 0 && (!dry || (!res.copied && !res.merged));
+
+        for (var ik in res.by_instance) {
+            var b = res.by_instance[ik];
+            lines.push('Instance ' + this._instName(ik) + ': ' + b.cis + ' plugin CI(s) – ' + (dry ? 'would copy ' : 'copied ') + b.copied +
+                (b.merged ? ', ' + (dry ? 'would merge ' : 'merged ') + b.merged : '') + (b.already ? ', already plain ' + b.already : ''));
+        }
+        var routed = this.T.plugins == this.plain;
+        lines.push('Routing: plugins -> ' + this.T.plugins + (routed ? ' (plain: OK)' : '  !! still the CI table – run install_code.js (x_…table.plugins = tracked_item) before or after this, then re-run'));
+        lines.push('--- Summary ---');
+        lines.push(res.cis + ' plugin CI(s); ' + (dry ? 'would copy: ' : 'copied: ') + res.copied + '; ' + (dry ? 'would merge: ' : 'merged: ') + res.merged + '; already plain: ' + res.already + '.');
+        if (!res.cis) lines.push('No plugin CIs: nothing to copy or delete.');
+        else if (dry && !res.copied && !res.merged) lines.push('Every plugin CI already has a plain copy. SAFE TO DELETE: open the table ' + ConfigNowConfig.SCOPE + '_cmdb_ci_sn_tracked_plugin (System Definition > Tables) and use "Delete All Records".');
+        else if (dry) lines.push('Dry run: nothing written. Run the fix script "Driftwood - Move plugins off the CMDB" to copy.');
+        else if (res.safe_to_delete) lines.push('Every plugin CI has a plain copy. SAFE TO DELETE: open the table ' + ConfigNowConfig.SCOPE + '_cmdb_ci_sn_tracked_plugin (System Definition > Tables) and use "Delete All Records".');
+        else lines.push('!! ' + missing + ' plugin CI(s) have no plain copy – do NOT delete the CIs; re-run and check the warnings above.');
+        res.text = lines.join('\n');
+        return res;
+    },
+
+    _has: function (gr, f) { return gr.isValidField(f); },
+
+    _instName: function (id) {
+        if (!this._names) this._names = {};
+        if (this._names[id] === undefined) {
+            var g = new GlideRecord(this.T.instance);
+            this._names[id] = g.get(id) ? String(g.getValue('instance_name') || g.getValue('name') || id) : id;
+        }
+        return this._names[id];
+    },
+
+    type: 'ConfigNowMigration'
+};

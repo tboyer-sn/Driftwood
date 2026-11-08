@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_definition">
+    <sys_ws_definition action="DELETE">
+        <active>false</active>
+        <base_uri>/api/x_2160899_driftw_0/configurationnow</base_uri>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_version>No active default version</default_version>
+        <doc_link/>
+        <enforce_acl/>
+        <is_versioned>false</is_versioned>
+        <name>ConfigurationNOW</name>
+        <namespace>x_2160899_driftw_0</namespace>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <service_id>configurationnow</service_id>
+        <short_description/>
+        <sys_class_name>sys_ws_definition</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:22:25</sys_created_on>
+        <sys_id>9234cc628314d710f22797efeeaad34b</sys_id>
+        <sys_mod_count>1</sys_mod_count>
+        <sys_name>ConfigurationNOW</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_ws_definition_9234cc628314d710f22797efeeaad34b</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
+    </sys_ws_definition>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</application>
+        <file_path/>
+        <instance_id>4f112ca9935853dc611eddd548373ca4</instance_id>
+        <instance_name>dev466156</instance_name>
+        <merge_base/>
+        <name>sys_ws_definition_9234cc628314d710f22797efeeaad34b</name>
+        <payload><![CDATA[<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_definition"><sys_ws_definition action="INSERT_OR_UPDATE"><active>false</active><base_uri>/api/x_2160899_driftw_0/configurationnow</base_uri><consumes>application/json,application/xml,text/xml</consumes><consumes_customized>false</consumes_customized><default_version>No active default version</default_version><doc_link/><enforce_acl/><is_versioned>false</is_versioned><name>ConfigurationNOW</name><namespace>x_2160899_driftw_0</namespace><produces>application/json,application/xml,text/xml</produces><produces_customized>false</produces_customized><service_id>configurationnow</service_id><short_description/><sys_class_name>sys_ws_definition</sys_class_name><sys_created_by>admin</sys_created_by><sys_created_on>2026-11-04 14:22:25</sys_created_on><sys_id>9234cc628314d710f22797efeeaad34b</sys_id><sys_mod_count>1</sys_mod_count><sys_name>ConfigurationNOW</sys_name><sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package><sys_policy/><sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope><sys_update_name>sys_ws_definition_9234cc628314d710f22797efeeaad34b</sys_update_name><sys_updated_by>admin</sys_updated_by><sys_updated_on>2026-11-07 17:48:20</sys_updated_on></sys_ws_definition></record_update>]]></payload>
+        <payload_hash>1874793499</payload_hash>
+        <record_name>ConfigurationNOW</record_name>
+        <reverted_from/>
+        <source>1018b13e83109b10f22797efeeaad38f</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 17:48:20</sys_created_on>
+        <sys_id>842054eb831c9f10f22797efeeaad35f</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>1a1b72029570000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
+        <type>Scripted REST API</type>
+        <update_guid>c02054eb761c9f10f63b69feee8d455e</update_guid>
+        <update_guid_history>c02054eb761c9f10f63b69feee8d455e:1874793499,2634cc62c614d710d56be94adc6a4a52:-1970928142</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete/>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-08 05:12:31</sys_created_on>
+        <sys_db_object display_value="" name="sys_ws_definition">sys_ws_definition</sys_db_object>
+        <sys_id>53f61b21f4d941509c806b2c0952fca4</sys_id>
+        <sys_metadata>9234cc628314d710f22797efeeaad34b</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>ConfigurationNOW</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_scope_delete display_value="">4833286af809459cad5860bb9c581ce4</sys_scope_delete>
+        <sys_update_name>sys_ws_definition_9234cc628314d710f22797efeeaad34b</sys_update_name>
+        <sys_update_version display_value="sys_ws_definition_9234cc628314d710f22797efeeaad34b">842054eb831c9f10f22797efeeaad35f</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-08 05:12:31</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

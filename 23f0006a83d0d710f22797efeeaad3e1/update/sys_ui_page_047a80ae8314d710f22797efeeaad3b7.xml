@@ -32,6 +32,10 @@ addLoadEvent(function () {
         return el('span', 'pill ' + fallbackCls, fallbackText);
     }
     var mode = 'pair', matrix = null, mcat = null, mstatus = null;
+    /* Deep link (v0.6): ?category=<cat>&key=<key> opens All instances on one
+       tracked object ("Compare across instances" on the object form). */
+    function qp(n) { var m = new RegExp('[?&]' + n + '=([^&#]*)').exec(window.location.search); return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : ''; }
+    var deep = qp('category') && qp('key') ? { cat: qp('category'), key: qp('key') } : null;
     var $ = function (id) { return document.getElementById(id); };
     var instances = [], local = '', result = null, cat = null, typeFilter = null;
 
@@ -110,6 +114,7 @@ addLoadEvent(function () {
             if (keepB) b.value = keepB;
             renderChips();
             status(instances.length + ' instance(s) available' + (instances.length < 2 ? ' – import a snapshot to compare' : ''));
+            if (deep && !deep.started && instances.length > 1) { deep.started = true; setMode('all'); compareAll(); }
         });
     }
 
@@ -342,9 +347,10 @@ addLoadEvent(function () {
         for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) ids.push(boxes[i].value);
         if (ids.length < 2) { status('Select at least one instance besides this one'); return; }
         status('Comparing ' + ids.length + ' instances…');
-        call('GET', '/matrix?instances=' + encodeURIComponent(ids.join(',')) + sysQ(), null, function (st, r) {
+        var one = deep ? '&categories=' + encodeURIComponent(deep.cat) + '&keys=' + encodeURIComponent(deep.key) : '';
+        call('GET', '/matrix?instances=' + encodeURIComponent(ids.join(',')) + sysQ() + one, null, function (st, r) {
             if (st != 200 || !r) { status('Compare failed (' + st + ')' + (r && r.error ? ': ' + r.error : '')); return; }
-            matrix = r; mcat = null; mstatus = null;
+            matrix = r; mcat = deep ? deep.cat : null; mstatus = null;
             $('dr-download').disabled = false;
             var s = r.summary;
             status('Compared ' + r.instances.length + ' instances at ' + r.generated_at + ' UTC – ' + (s.differs + s.partial) + ' row(s) differ, ' + s.version_only + ' version-only, ' + (s.count_only || 0) + ' count-only');
@@ -355,7 +361,16 @@ addLoadEvent(function () {
     function renderMatrix() {
         var host = $('dr-result'); clear(host);
         if (!matrix) return;
-        var counts = mcat ? matrix.categories[mcat].counts : matrix.summary;
+        if (deep) {
+            var ban = el('div', 'per'), bx = el('div');
+            bx.appendChild(document.createTextNode('Showing one object: '));
+            bx.appendChild(el('b', null, (LABELS[deep.cat] || deep.cat) + ' · ' + deep.key));
+            bx.appendChild(document.createTextNode('  '));
+            var allBtn = el('button', null, 'Show all differences'); allBtn.type = 'button'; allBtn.id = 'dr-deep-clear';
+            allBtn.onclick = function () { deep = null; compareAll(); };
+            bx.appendChild(allBtn); ban.appendChild(bx); host.appendChild(ban);
+        }
+        var counts = mcat && matrix.categories[mcat] ? matrix.categories[mcat].counts : matrix.summary;
         var cards = el('div', 'cards');
         [['differs', 'Differs'], ['partial', 'Missing somewhere'], ['same', 'Same everywhere'], ['ignored', 'Ignored (expected)']].forEach(function (c) {
             var card = el('div', 'card ' + (c[0] == 'differs' ? 'changed' : c[0] == 'partial' ? 'only_a' : c[0]) + (mstatus == c[0] ? ' on' : ''));
@@ -431,12 +446,12 @@ addLoadEvent(function () {
             for (var i = 0; i < rs.length; i++) {
                 var r = rs[i];
                 if (mstatus && r.status != mstatus) continue;
-                if (hidden(r)) continue;
+                if (hidden(r) && !deep) continue;
                 if (f && (r.key + ' ' + r.name).toLowerCase().indexOf(f) == -1) continue;
                 rows.push([k, r]);
             }
         }
-        if (!rows.length) { host.appendChild(el('div', 'muted', 'No differences match.')); return; }
+        if (!rows.length) { host.appendChild(el('div', 'muted', deep ? 'Not present on any compared instance (or that category is not collected on at least two).' : 'No differences match.')); return; }
         var table = el('table'), thead = el('thead'), hr = el('tr');
         var h1 = el('th', 'k1', 'Item'); hr.appendChild(h1);
         for (var c = 0; c < matrix.instances.length; c++) {
@@ -452,7 +467,8 @@ addLoadEvent(function () {
             kc.appendChild(el('div', 'mono', row.key));
             var sub = el('div', 'muted', (LABELS[rows[j][0]] || rows[j][0]) + (row.name && row.name != row.key ? ' · ' + row.name : ''));
             kc.appendChild(sub);
-            kc.appendChild(row.status == 'partial' ? el('span', 'pill only_a', 'Missing somewhere') : pill(row, 'changed', 'Differs'));
+            kc.appendChild(row.status == 'partial' ? el('span', 'pill only_a', 'Missing somewhere') :
+                (row.status == 'same' ? el('span', 'pill version_only', row.ignored ? 'Expected difference' : 'Same everywhere') : pill(row, 'changed', 'Differs')));
             tr.appendChild(kc);
             for (var x = 0; x < row.cells.length; x++) {
                 var td = mcell(row.cells[x], row, x == row.reference);
@@ -588,13 +604,13 @@ addLoadEvent(function () {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:49:34</sys_created_on>
         <sys_id>047a80ae8314d710f22797efeeaad3b7</sys_id>
-        <sys_mod_count>7</sys_mod_count>
+        <sys_mod_count>8</sys_mod_count>
         <sys_name>drift_report</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_ui_page_047a80ae8314d710f22797efeeaad3b7</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
+        <sys_updated_on>2026-11-08 04:27:50</sys_updated_on>
     </sys_ui_page>
 </record_update>

@@ -141,6 +141,10 @@ ConfigNowCompare.prototype = {
      * version_only – every difference in the row is a version difference
      * count_only   – every difference is a record count (tables: total, customer_*)
      * kinds        – drift kinds present in the row (see config.driftKinds)
+     *
+     * opts.keys (v0.6, "Compare across instances" on a tracked object): only
+     * these item keys, and their rows are returned even when the item is the
+     * same everywhere (status 'same').
      */
     compareMany: function (refs, opts) {
         opts = opts || {};
@@ -159,6 +163,8 @@ ConfigNowCompare.prototype = {
 
         var ignore = this._buildIgnore(insts);
         this._checkSysIds = opts.sysIds === undefined ? !!this.config.compareSysIds : !!opts.sysIds;
+        var onlyKeys = null;
+        if (opts.keys && opts.keys.length) { onlyKeys = {}; for (i = 0; i < opts.keys.length; i++) onlyKeys[opts.keys[i]] = true; }
         var result = {
             schema: 'driftwood.matrix/0.1',
             sys_id_check: this._checkSysIds,
@@ -193,7 +199,8 @@ ConfigNowCompare.prototype = {
             var rows = [];
             for (var r = 0; r < order.length; r++) {
                 var key = order[r];
-                if (ignore[cat + '|' + key]) { counts.ignored++; continue; }
+                if (onlyKeys && !onlyKeys[key]) continue;
+                if (ignore[cat + '|' + key] && !onlyKeys) { counts.ignored++; continue; }
                 // reference = baseline if it has the item, else the first column that does
                 var ref = coll[0] && maps[0][key] ? 0 : -1;
                 for (i = 0; ref < 0 && i < maps.length; i++) if (maps[i][key]) ref = i;
@@ -216,17 +223,22 @@ ConfigNowCompare.prototype = {
                     if (it.columns) { cell.columns = it.columns; if (it.columns_truncated) cell.columns_truncated = true; }
                     cells.push(cell);
                 }
-                if (!missing && !anyDiff) { counts.same++; continue; }
+                if (!missing && !anyDiff) {
+                    counts.same++;
+                    if (!onlyKeys) continue;
+                }
                 var vOnly = !missing && fields.length == 1 && fields[0] == 'version';
                 var mKinds = this._kinds(fields, cat);
                 var cOnly = !missing && mKinds.length == 1 && mKinds[0] == 'count';
-                var status = missing ? 'partial' : 'differs';
-                counts[status]++;
+                var status = missing ? 'partial' : (anyDiff ? 'differs' : 'same');
+                if (status != 'same') counts[status]++;
                 if (vOnly) counts.version_only++;
                 if (cOnly) counts.count_only++;
                 var nm = '';
                 for (i = 0; i < maps.length && !nm; i++) if (maps[i][key]) nm = maps[i][key].name;
-                rows.push({ key: key, name: nm, status: status, version_only: vOnly, count_only: cOnly, kinds: mKinds, reference: ref, fields: fields, cells: cells });
+                var mrow = { key: key, name: nm, status: status, version_only: vOnly, count_only: cOnly, kinds: mKinds, reference: ref, fields: fields, cells: cells };
+                if (ignore[cat + '|' + key]) mrow.ignored = true;
+                rows.push(mrow);
             }
             result.categories[cat] = { counts: counts, rows: rows };
             if (notColl.length) result.categories[cat].not_collected = notColl;
@@ -410,13 +422,13 @@ ConfigNowCompare.prototype = {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:49:05</sys_created_on>
         <sys_id>c95a406a8314d710f22797efeeaad344</sys_id>
-        <sys_mod_count>8</sys_mod_count>
+        <sys_mod_count>9</sys_mod_count>
         <sys_name>ConfigNowCompare</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_script_include_c95a406a8314d710f22797efeeaad344</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-07 17:47:41</sys_updated_on>
+        <sys_updated_on>2026-11-08 04:27:16</sys_updated_on>
     </sys_script_include>
 </record_update>
