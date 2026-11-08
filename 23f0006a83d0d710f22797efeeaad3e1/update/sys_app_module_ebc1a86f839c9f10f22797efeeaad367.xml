@@ -4,7 +4,8 @@
         <application display_value="Driftwood">ea34cc628314d710f22797efeeaad365</application>
         <assessment/>
         <device_type/>
-        <filter table="x_2160899_driftw_0_tracked_object">differs_on_prod=true<item endquery="false" field="differs_on_prod" goto="false" newquery="false" operator="=" or="false" value="true"/>
+        <filter table="x_2160899_driftw_0_tracked_object">differs_on_prod=true^drift_kinds!=count<item endquery="false" field="differs_on_prod" goto="false" newquery="false" operator="=" or="false" value="true"/>
+            <item endquery="false" field="drift_kinds" goto="false" newquery="false" operator="!=" or="false" value="count"/>
         </filter>
         <hint/>
         <homepage/>
@@ -29,7 +30,7 @@
         <sys_domain>global</sys_domain>
         <sys_domain_path>/</sys_domain_path>
         <sys_id>ebc1a86f839c9f10f22797efeeaad367</sys_id>
-        <sys_mod_count>0</sys_mod_count>
+        <sys_mod_count>1</sys_mod_count>
         <sys_name>Objects: Differs on Prod</sys_name>
         <sys_overrides/>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
@@ -37,7 +38,7 @@
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_app_module_ebc1a86f839c9f10f22797efeeaad367</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-07 19:05:35</sys_updated_on>
+        <sys_updated_on>2026-11-08 01:39:48</sys_updated_on>
         <timeline_page/>
         <title>Objects: Differs on Prod</title>
         <uncancelable>false</uncancelable>

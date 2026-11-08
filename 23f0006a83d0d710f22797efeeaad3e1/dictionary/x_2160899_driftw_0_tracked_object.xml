@@ -10,6 +10,7 @@
                 <element inactive_on_update="false" label="Not compared yet" sequence="50" value="not_compared"/>
                 <element inactive_on_update="false" label="Single instance" sequence="40" value="single"/>
                 <element inactive_on_update="false" label="Missing somewhere" sequence="30" value="missing"/>
+                <element inactive_on_update="false" label="Expected difference" sequence="60" value="ignored"/>
             </choice>
         </element>
         <element label="Present on" max_length="40" name="present_count" type="integer"/>

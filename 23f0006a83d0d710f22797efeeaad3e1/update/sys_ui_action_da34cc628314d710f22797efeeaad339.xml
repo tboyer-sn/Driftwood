@@ -47,7 +47,9 @@
     gs.addInfoMessage('Driftwood: ' + t.inserted + ' new, ' + t.updated + ' changed, ' +
         t.restored + ' restored, ' + t.removed + ' no longer present, ' + t.unchanged + ' unchanged (' +
         snapshot.duration_ms + ' ms)' + (result.run_id ? '. Run ' + result.run_id + ', ' + result.changes_logged + ' change(s) logged' +
-        (result.baseline.length ? ', baseline for ' + result.baseline.join(', ') : '') : '') + '.');
+        (result.baseline.length ? ', baseline for ' + result.baseline.join(', ') : '') : '') +
+        (result.drift && !result.drift.error ? '. Drift: ' + result.drift.evaluated + ' object(s) checked, ' + result.drift.changed + ' updated' : '') + '.');
+    if (result.drift && result.drift.error) gs.addErrorMessage('Driftwood: drift was not updated (' + result.drift.error + '); the daily recompute will catch up.');
     if (snapshot.warnings.length) {
         gs.addErrorMessage('Driftwood: ' + snapshot.warnings.length +
             ' collection warning(s) – see Collection summary.');
@@ -67,7 +69,7 @@
         <sys_domain>global</sys_domain>
         <sys_domain_path>/</sys_domain_path>
         <sys_id>da34cc628314d710f22797efeeaad339</sys_id>
-        <sys_mod_count>2</sys_mod_count>
+        <sys_mod_count>3</sys_mod_count>
         <sys_name>Collect now</sys_name>
         <sys_overrides/>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
@@ -75,7 +77,7 @@
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_ui_action_da34cc628314d710f22797efeeaad339</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-07 17:48:19</sys_updated_on>
+        <sys_updated_on>2026-11-08 01:39:47</sys_updated_on>
         <table>x_2160899_driftw_0_cmdb_ci_sn_instance</table>
         <ui11_compatible>true</ui11_compatible>
         <ui16_compatible>false</ui16_compatible>

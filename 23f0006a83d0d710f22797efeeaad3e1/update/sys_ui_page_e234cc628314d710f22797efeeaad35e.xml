@@ -268,7 +268,8 @@ addLoadEvent(function () {
             if (xhr.status != 200 || !r || !r.totals) { $('cfgnow-status').textContent = 'Collect failed (' + xhr.status + ')' + (r && r.error ? ': ' + r.error : ''); return; }
             var t = r.totals;
             lastMsg = 'Saved ' + r.collected_at + ' UTC: ' + t.inserted + ' new, ' + t.updated + ' changed, ' + t.restored + ' restored, ' +
-                t.removed + ' no longer present, ' + t.unchanged + ' unchanged (' + r.duration_ms + ' ms)' + (r.warnings ? ', ' + r.warnings + ' warning(s)' : '');
+                t.removed + ' no longer present, ' + t.unchanged + ' unchanged (' + r.duration_ms + ' ms)' + (r.warnings ? ', ' + r.warnings + ' warning(s)' : '') +
+                (r.drift && !r.drift.error ? ' · drift: ' + r.drift.evaluated + ' object(s) checked, ' + r.drift.changed + ' updated' : '');
             load();
         };
         xhr.send('{}');
@@ -359,13 +360,13 @@ addLoadEvent(function () {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:22:25</sys_created_on>
         <sys_id>e234cc628314d710f22797efeeaad35e</sys_id>
-        <sys_mod_count>6</sys_mod_count>
+        <sys_mod_count>7</sys_mod_count>
         <sys_name>current_settings</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_ui_page_e234cc628314d710f22797efeeaad35e</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-07 17:48:20</sys_updated_on>
+        <sys_updated_on>2026-11-08 01:39:47</sys_updated_on>
     </sys_ui_page>
 </record_update>

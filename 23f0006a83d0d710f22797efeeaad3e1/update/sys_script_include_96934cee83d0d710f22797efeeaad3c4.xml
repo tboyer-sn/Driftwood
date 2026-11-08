@@ -121,7 +121,9 @@ ConfigNowWriter.prototype = {
 
         // Final status on the instance CI
         var gr = new GlideRecord(this.T.instance);
+        var prevCats = null;
         if (gr.get(instId)) {
+            try { prevCats = JSON.parse(gr.getValue('collection_summary') || '{}').categories || null; } catch (e0) { prevCats = null; }
             gr.setValue('collection_status', snapshot.warnings && snapshot.warnings.length ? 'completed_with_warnings' : 'completed');
             gr.setValue('collection_summary', this._clip(JSON.stringify({
                 source: options.source || 'local',
@@ -135,6 +137,32 @@ ConfigNowWriter.prototype = {
                 warnings: snapshot.warnings
             }), 4000));
             gr.update();
+        }
+
+        // Stored drift (v0.6), after the summary above (it says which
+        // categories this instance reports): the touched objects, plus every
+        // object of a category this instance reports for the first time or
+        // no longer reports (its instance count changed). Never fails the
+        // save; the daily pass catches up.
+        if (ctx.objects && options.drift !== false && typeof ConfigNowDrift != 'undefined') {
+            var whole = {}, wl = [], b;
+            for (b = 0; b < result.baseline.length; b++) whole[result.baseline[b]] = true;
+            if (prevCats) {
+                var now2 = {}, p2;
+                for (b = 0; b < cats.length; b++) now2[cats[b]] = true;
+                for (p2 = 0; p2 < prevCats.length; p2++) if (!now2[prevCats[p2]]) whole[prevCats[p2]] = true;
+                for (b = 0; b < cats.length; b++) { var was = false; for (p2 = 0; p2 < prevCats.length; p2++) if (prevCats[p2] == cats[b]) was = true; if (!was) whole[cats[b]] = true; }
+            }
+            for (var wk in whole) wl.push(wk);
+            if (this.touchedObjects.length || wl.length) {
+                try {
+                    var dr = new ConfigNowDrift(this.config).recompute({ objectIds: this.touchedObjects, categories: wl });
+                    result.drift = { evaluated: dr.evaluated, changed: dr.changed, status_changed: dr.status_changed, ms: dr.ms };
+                } catch (e) {
+                    result.drift = { error: String(e && e.message ? e.message : e) };
+                    gs.warn('[Driftwood] Drift recompute after save failed (the daily pass will catch up): ' + result.drift.error);
+                }
+            }
         }
         return result;
     },
@@ -422,13 +450,13 @@ ConfigNowWriter.prototype = {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-04 14:19:41</sys_created_on>
         <sys_id>96934cee83d0d710f22797efeeaad3c4</sys_id>
-        <sys_mod_count>6</sys_mod_count>
+        <sys_mod_count>7</sys_mod_count>
         <sys_name>ConfigNowWriter</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_script_include_96934cee83d0d710f22797efeeaad3c4</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-07 19:14:27</sys_updated_on>
+        <sys_updated_on>2026-11-08 01:38:53</sys_updated_on>
     </sys_script_include>
 </record_update>
