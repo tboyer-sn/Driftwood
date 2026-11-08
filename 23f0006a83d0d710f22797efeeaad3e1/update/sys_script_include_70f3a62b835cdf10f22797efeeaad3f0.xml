@@ -110,7 +110,7 @@ ConfigNowMigration.prototype = {
         v2.addQuery('item_category', 'plugins');
         v2.query();
         while (v2.next()) if (!have[v2.getValue('instance') + '|' + v2.getValue('item_key')]) missing++;
-        res.safe_to_delete = !dry && missing == 0;
+        res.safe_to_delete = missing == 0 && (!dry || (!res.copied && !res.merged));
 
         for (var ik in res.by_instance) {
             var b = res.by_instance[ik];
@@ -121,8 +121,9 @@ ConfigNowMigration.prototype = {
         lines.push('Routing: plugins -> ' + this.T.plugins + (routed ? ' (plain: OK)' : '  !! still the CI table – run install_code.js (x_…table.plugins = tracked_item) before or after this, then re-run'));
         lines.push('--- Summary ---');
         lines.push(res.cis + ' plugin CI(s); ' + (dry ? 'would copy: ' : 'copied: ') + res.copied + '; ' + (dry ? 'would merge: ' : 'merged: ') + res.merged + '; already plain: ' + res.already + '.');
-        if (dry) lines.push('Dry run: nothing written. Run the fix script "Driftwood - Move plugins to plain records" to copy.');
-        else if (!res.cis) lines.push('No plugin CIs: nothing to delete.');
+        if (!res.cis) lines.push('No plugin CIs: nothing to copy or delete.');
+        else if (dry && !res.copied && !res.merged) lines.push('Every plugin CI already has a plain copy. SAFE TO DELETE: open the table ' + ConfigNowConfig.SCOPE + '_cmdb_ci_sn_tracked_plugin (System Definition > Tables) and use "Delete All Records".');
+        else if (dry) lines.push('Dry run: nothing written. Run the fix script "Driftwood - Move plugins off the CMDB" to copy.');
         else if (res.safe_to_delete) lines.push('Every plugin CI has a plain copy. SAFE TO DELETE: open the table ' + ConfigNowConfig.SCOPE + '_cmdb_ci_sn_tracked_plugin (System Definition > Tables) and use "Delete All Records".');
         else lines.push('!! ' + missing + ' plugin CI(s) have no plain copy – do NOT delete the CIs; re-run and check the warnings above.');
         res.text = lines.join('\n');
@@ -147,13 +148,13 @@ ConfigNowMigration.prototype = {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-11-08 04:34:12</sys_created_on>
         <sys_id>70f3a62b835cdf10f22797efeeaad3f0</sys_id>
-        <sys_mod_count>0</sys_mod_count>
+        <sys_mod_count>2</sys_mod_count>
         <sys_name>ConfigNowMigration</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
         <sys_update_name>sys_script_include_70f3a62b835cdf10f22797efeeaad3f0</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-08 04:34:12</sys_updated_on>
+        <sys_updated_on>2026-11-08 05:21:47</sys_updated_on>
     </sys_script_include>
 </record_update>

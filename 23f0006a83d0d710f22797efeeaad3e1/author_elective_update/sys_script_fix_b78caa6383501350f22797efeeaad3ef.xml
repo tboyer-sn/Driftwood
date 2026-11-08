@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_fix">
+    <sys_script_fix action="DELETE">
+        <before>false</before>
+        <description>v0.6 (O05): copies per-instance plugin CIs to plain tracked items and verifies; never deletes. Idempotent.</description>
+        <name>Driftwood - Move plugins to plain record</name>
+        <record_for_rollback>false</record_for_rollback>
+        <script><![CDATA[/* Driftwood - Move plugins to plain records (v0.6, O05)
+ * Copies every per-instance plugin record stored as a CI to the plain
+ * tracked_item table (first seen, last changed, presence, links and the
+ * tracked object are kept). Idempotent; it never deletes the CIs. When it
+ * reports SAFE TO DELETE, delete them with "Delete All Records" on the
+ * x_2160899_driftw_0_cmdb_ci_sn_tracked_plugin table. On an instance that never
+ * stored plugins as CIs it does nothing.
+ *
+ * Dry run first: Scripts - Background, script scope Driftwood:
+ *   gs.info(new ConfigNowMigration().movePlugins({ dryRun: true }).text);
+ */
+gs.info(new ConfigNowMigration().movePlugins().text);
+]]></script>
+        <sys_class_name>sys_script_fix</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-08 05:11:48</sys_created_on>
+        <sys_id>b78caa6383501350f22797efeeaad3ef</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Driftwood - Move plugins to plain record</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_script_fix_b78caa6383501350f22797efeeaad3ef</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-08 05:11:48</sys_updated_on>
+        <unloadable>false</unloadable>
+    </sys_script_fix>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</application>
+        <file_path/>
+        <instance_id>4f112ca9935853dc611eddd548373ca4</instance_id>
+        <instance_name>dev466156</instance_name>
+        <merge_base/>
+        <name>sys_script_fix_b78caa6383501350f22797efeeaad3ef</name>
+        <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update table="sys_script_fix"&gt;&lt;sys_script_fix action="INSERT_OR_UPDATE"&gt;&lt;before&gt;false&lt;/before&gt;&lt;description&gt;v0.6 (O05): copies per-instance plugin CIs to plain tracked items and verifies; never deletes. Idempotent.&lt;/description&gt;&lt;name&gt;Driftwood - Move plugins to plain record&lt;/name&gt;&lt;record_for_rollback&gt;false&lt;/record_for_rollback&gt;&lt;script&gt;&lt;![CDATA[/* Driftwood - Move plugins to plain records (v0.6, O05)
+ * Copies every per-instance plugin record stored as a CI to the plain
+ * tracked_item table (first seen, last changed, presence, links and the
+ * tracked object are kept). Idempotent; it never deletes the CIs. When it
+ * reports SAFE TO DELETE, delete them with "Delete All Records" on the
+ * x_2160899_driftw_0_cmdb_ci_sn_tracked_plugin table. On an instance that never
+ * stored plugins as CIs it does nothing.
+ *
+ * Dry run first: Scripts - Background, script scope Driftwood:
+ *   gs.info(new ConfigNowMigration().movePlugins({ dryRun: true }).text);
+ */
+gs.info(new ConfigNowMigration().movePlugins().text);
+]]&gt;&lt;/script&gt;&lt;sys_class_name&gt;sys_script_fix&lt;/sys_class_name&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2026-11-08 05:11:48&lt;/sys_created_on&gt;&lt;sys_id&gt;b78caa6383501350f22797efeeaad3ef&lt;/sys_id&gt;&lt;sys_mod_count&gt;0&lt;/sys_mod_count&gt;&lt;sys_name&gt;Driftwood - Move plugins to plain record&lt;/sys_name&gt;&lt;sys_package display_value="Driftwood" source="x_2160899_driftw_0"&gt;23f0006a83d0d710f22797efeeaad3e1&lt;/sys_package&gt;&lt;sys_policy/&gt;&lt;sys_scope display_value="Driftwood"&gt;23f0006a83d0d710f22797efeeaad3e1&lt;/sys_scope&gt;&lt;sys_update_name&gt;sys_script_fix_b78caa6383501350f22797efeeaad3ef&lt;/sys_update_name&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2026-11-08 05:11:48&lt;/sys_updated_on&gt;&lt;unloadable&gt;false&lt;/unloadable&gt;&lt;/sys_script_fix&gt;&lt;/record_update&gt;</payload>
+        <payload_hash>-2097588032</payload_hash>
+        <record_name>Driftwood - Move plugins to plain record</record_name>
+        <reverted_from/>
+        <source>02d96aeb83101350f22797efeeaad358</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-08 05:11:48</sys_created_on>
+        <sys_id>b78caa6383501350f22797efeeaad3f4</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>1a1b991e4a40000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-08 05:11:48</sys_updated_on>
+        <type>Fix Script</type>
+        <update_guid>738caa6394501350764b992bbcf021f3</update_guid>
+        <update_guid_history>738caa6394501350764b992bbcf021f3:-2097588032</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete/>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-08 05:21:47</sys_created_on>
+        <sys_db_object display_value="" name="sys_script_fix">sys_script_fix</sys_db_object>
+        <sys_id>32fe2be697894844a91c2853559458c1</sys_id>
+        <sys_metadata>b78caa6383501350f22797efeeaad3ef</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Driftwood - Move plugins to plain record</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_scope_delete display_value="">4833286af809459cad5860bb9c581ce4</sys_scope_delete>
+        <sys_update_name>sys_script_fix_b78caa6383501350f22797efeeaad3ef</sys_update_name>
+        <sys_update_version display_value="sys_script_fix_b78caa6383501350f22797efeeaad3ef">b78caa6383501350f22797efeeaad3f4</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-08 05:21:47</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

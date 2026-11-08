@@ -5,12 +5,15 @@
         <consumes_customized>false</consumes_customized>
         <default_operation_uri/>
         <enforce_acl/>
-        <http_method>POST</http_method>
-        <name>snapshot</name>
+        <http_method>GET</http_method>
+        <name>health</name>
         <operation_script><![CDATA[/**
- * Scripted REST resource: POST /snapshot[?force=true][&allow_local=true]
- * Body: a snapshot JSON (configurationnow.snapshot/0.1), as downloaded from
- * the Current Instance Settings page. Imports it as its own instance CI.
+ * Scripted REST resource: GET /health
+ * Driftwood's read-only self-check (ConfigNowHealth): schema, roles, ACLs,
+ * jobs, REST, fix scripts, cross-scope privileges, collection freshness,
+ * tracked objects and drift, retention. status = the worst check
+ * (ok | info | warn | fail). Always HTTP 200 when it ran; monitors read
+ * result.status.
  * Requires x_2160899_driftw_0.configuration_admin (checked here as well).
  */
 (function process(request, response) {
@@ -19,32 +22,21 @@
         response.setBody({ error: 'Requires role x_2160899_driftw_0.configuration_admin' });
         return;
     }
-    var snap;
     try {
-        snap = request.body.data;
-        if (!snap || typeof snap != 'object') snap = JSON.parse(request.body.dataString);
-    } catch (e) {
-        response.setStatus(400);
-        response.setBody({ error: 'Body is not valid JSON' });
-        return;
-    }
-    var qp = request.queryParams;
-    var force = qp.force && String(qp.force[0]) == 'true';
-    var allowLocal = qp.allow_local && String(qp.allow_local[0]) == 'true';
-    try {
-        var res = new ConfigNowImporter().importSnapshot(snap, { force: force, allowLocal: allowLocal });
+        var res = new ConfigNowHealth().run();
         response.setStatus(200);
+        response.setHeader('Cache-Control', 'no-store');
         response.setBody(res);
-    } catch (e2) {
-        response.setStatus(422);
-        response.setBody({ error: String(e2 && e2.message ? e2.message : e2) });
+    } catch (e) {
+        response.setStatus(500);
+        response.setBody({ error: String(e && e.message ? e.message : e) });
     }
 })(request, response);
 ]]></operation_script>
-        <operation_uri>/api/x_2160899_driftw_0/configurationnow/snapshot</operation_uri>
+        <operation_uri>/api/x_2160899_driftw_0/driftwood/health</operation_uri>
         <produces>application/json,application/xml,text/xml</produces>
         <produces_customized>false</produces_customized>
-        <relative_path>/snapshot</relative_path>
+        <relative_path>/health</relative_path>
         <request_example/>
         <requires_acl_authorization>false</requires_acl_authorization>
         <requires_authentication>true</requires_authentication>
@@ -53,17 +45,17 @@
         <support_trailing_slash>false</support_trailing_slash>
         <sys_class_name>sys_ws_operation</sys_class_name>
         <sys_created_by>admin</sys_created_by>
-        <sys_created_on>2026-11-04 14:49:34</sys_created_on>
-        <sys_id>847a80ae8314d710f22797efeeaad3b1</sys_id>
-        <sys_mod_count>1</sys_mod_count>
-        <sys_name>snapshot</sys_name>
+        <sys_created_on>2026-11-08 05:12:30</sys_created_on>
+        <sys_id>c6bcee6383501350f22797efeeaad3f6</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>health</sys_name>
         <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
         <sys_policy/>
         <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
-        <sys_update_name>sys_ws_operation_847a80ae8314d710f22797efeeaad3b1</sys_update_name>
+        <sys_update_name>sys_ws_operation_c6bcee6383501350f22797efeeaad3f6</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-11-04 15:07:08</sys_updated_on>
-        <web_service_definition display_value="ConfigurationNOW">9234cc628314d710f22797efeeaad34b</web_service_definition>
+        <sys_updated_on>2026-11-08 05:12:30</sys_updated_on>
+        <web_service_definition display_value="Driftwood">442054eb831c9f10f22797efeeaad330</web_service_definition>
         <web_service_version/>
     </sys_ws_operation>
 </record_update>

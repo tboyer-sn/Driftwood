@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_operation">
+    <sys_ws_operation action="DELETE">
+        <active>true</active>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_operation_uri/>
+        <enforce_acl/>
+        <http_method>GET</http_method>
+        <name>current</name>
+        <operation_script><![CDATA[/**
+ * Scripted REST API:  ConfigurationNOW   (API ID: configurationnow)
+ * Base path:          /api/x_2160899_driftw_0/configurationnow
+ * Resource:           GET /current
+ * Requires authentication: true
+ * ACLs / roles:       restrict to x_2160899_driftw_0.configuration_read (see README)
+ *
+ * Returns a live snapshot of the current instance's settings. Nothing is
+ * written. Optional query params:
+ *   categories=plugins,applications   limit the categories collected
+ *
+ * IMPORTANT: the collector uses GlideRecord, which does not enforce ACLs, so
+ * this resource MUST be role-restricted. Secure-property hashes are removed
+ * unless the caller has x_2160899_driftw_0.configuration_read_secure.
+ *
+ * This endpoint is also the future contract for cross-instance collection:
+ * a central instance calls GET /current on each Dev/Test/Sub-Prod/Prod node.
+ */
+(function process(request, response) {
+    // Defence in depth: enforce the role here as well as via REST ACLs, because
+    // the collector reads system tables with GlideRecord (no ACL checks).
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_read')) {
+        response.setStatus(403);
+        response.setBody({ error: 'Requires role x_2160899_driftw_0.configuration_read' });
+        return;
+    }
+    var opts = {};
+    var cats = request.queryParams.categories;
+    if (cats && cats.length) opts.categories = String(cats[0]).split(',');
+
+    var snapshot = new ConfigNowCollector(opts).collect();
+
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_read_secure')) {
+        var props = snapshot.categories.system_properties;
+        if (props) {
+            for (var i = 0; i < props.items.length; i++) {
+                if (props.items[i].secure) props.items[i].secure_value_hash = '(restricted)';
+            }
+        }
+    }
+    response.setStatus(200);
+    response.setHeader('Cache-Control', 'no-store');
+    response.setBody(snapshot);
+})(request, response);
+]]></operation_script>
+        <operation_uri>/api/x_2160899_driftw_0/configurationnow/current</operation_uri>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <relative_path>/current</relative_path>
+        <request_example/>
+        <requires_acl_authorization>false</requires_acl_authorization>
+        <requires_authentication>true</requires_authentication>
+        <requires_snc_internal_role>true</requires_snc_internal_role>
+        <short_description/>
+        <support_trailing_slash>false</support_trailing_slash>
+        <sys_class_name>sys_ws_operation</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:22:25</sys_created_on>
+        <sys_id>6e34cc628314d710f22797efeeaad354</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>current</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_ws_operation_6e34cc628314d710f22797efeeaad354</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 14:22:25</sys_updated_on>
+        <web_service_definition display_value="ConfigurationNOW">9234cc628314d710f22797efeeaad34b</web_service_definition>
+        <web_service_version/>
+    </sys_ws_operation>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</application>
+        <file_path/>
+        <instance_id>4f112ca9935853dc611eddd548373ca4</instance_id>
+        <instance_name>dev466156</instance_name>
+        <merge_base/>
+        <name>sys_ws_operation_6e34cc628314d710f22797efeeaad354</name>
+        <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update table="sys_ws_operation"&gt;&lt;sys_ws_operation action="INSERT_OR_UPDATE"&gt;&lt;active&gt;true&lt;/active&gt;&lt;consumes&gt;application/json,application/xml,text/xml&lt;/consumes&gt;&lt;consumes_customized&gt;false&lt;/consumes_customized&gt;&lt;default_operation_uri/&gt;&lt;enforce_acl/&gt;&lt;http_method&gt;GET&lt;/http_method&gt;&lt;name&gt;current&lt;/name&gt;&lt;operation_script&gt;&lt;![CDATA[/**
+ * Scripted REST API:  ConfigurationNOW   (API ID: configurationnow)
+ * Base path:          /api/x_2160899_driftw_0/configurationnow
+ * Resource:           GET /current
+ * Requires authentication: true
+ * ACLs / roles:       restrict to x_2160899_driftw_0.configuration_read (see README)
+ *
+ * Returns a live snapshot of the current instance's settings. Nothing is
+ * written. Optional query params:
+ *   categories=plugins,applications   limit the categories collected
+ *
+ * IMPORTANT: the collector uses GlideRecord, which does not enforce ACLs, so
+ * this resource MUST be role-restricted. Secure-property hashes are removed
+ * unless the caller has x_2160899_driftw_0.configuration_read_secure.
+ *
+ * This endpoint is also the future contract for cross-instance collection:
+ * a central instance calls GET /current on each Dev/Test/Sub-Prod/Prod node.
+ */
+(function process(request, response) {
+    // Defence in depth: enforce the role here as well as via REST ACLs, because
+    // the collector reads system tables with GlideRecord (no ACL checks).
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_read')) {
+        response.setStatus(403);
+        response.setBody({ error: 'Requires role x_2160899_driftw_0.configuration_read' });
+        return;
+    }
+    var opts = {};
+    var cats = request.queryParams.categories;
+    if (cats &amp;&amp; cats.length) opts.categories = String(cats[0]).split(',');
+
+    var snapshot = new ConfigNowCollector(opts).collect();
+
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_read_secure')) {
+        var props = snapshot.categories.system_properties;
+        if (props) {
+            for (var i = 0; i &lt; props.items.length; i++) {
+                if (props.items[i].secure) props.items[i].secure_value_hash = '(restricted)';
+            }
+        }
+    }
+    response.setStatus(200);
+    response.setHeader('Cache-Control', 'no-store');
+    response.setBody(snapshot);
+})(request, response);
+]]&gt;&lt;/operation_script&gt;&lt;operation_uri&gt;/api/x_2160899_driftw_0/configurationnow/current&lt;/operation_uri&gt;&lt;produces&gt;application/json,application/xml,text/xml&lt;/produces&gt;&lt;produces_customized&gt;false&lt;/produces_customized&gt;&lt;relative_path&gt;/current&lt;/relative_path&gt;&lt;request_example/&gt;&lt;requires_acl_authorization&gt;false&lt;/requires_acl_authorization&gt;&lt;requires_authentication&gt;true&lt;/requires_authentication&gt;&lt;requires_snc_internal_role&gt;true&lt;/requires_snc_internal_role&gt;&lt;short_description/&gt;&lt;support_trailing_slash&gt;false&lt;/support_trailing_slash&gt;&lt;sys_class_name&gt;sys_ws_operation&lt;/sys_class_name&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2026-11-04 14:22:25&lt;/sys_created_on&gt;&lt;sys_id&gt;6e34cc628314d710f22797efeeaad354&lt;/sys_id&gt;&lt;sys_mod_count&gt;0&lt;/sys_mod_count&gt;&lt;sys_name&gt;current&lt;/sys_name&gt;&lt;sys_package display_value="Driftwood" source="x_2160899_driftw_0"&gt;23f0006a83d0d710f22797efeeaad3e1&lt;/sys_package&gt;&lt;sys_policy/&gt;&lt;sys_scope display_value="Driftwood"&gt;23f0006a83d0d710f22797efeeaad3e1&lt;/sys_scope&gt;&lt;sys_update_name&gt;sys_ws_operation_6e34cc628314d710f22797efeeaad354&lt;/sys_update_name&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2026-11-04 14:22:25&lt;/sys_updated_on&gt;&lt;web_service_definition display_value="ConfigurationNOW"&gt;9234cc628314d710f22797efeeaad34b&lt;/web_service_definition&gt;&lt;web_service_version/&gt;&lt;/sys_ws_operation&gt;&lt;/record_update&gt;</payload>
+        <payload_hash>2003142220</payload_hash>
+        <record_name>current</record_name>
+        <reverted_from/>
+        <source>37f0006a83d0d710f22797efeeaad3e7</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:22:25</sys_created_on>
+        <sys_id>2e34cc628314d710f22797efeeaad35c</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>1a1a6f0904b0000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-04 14:22:25</sys_updated_on>
+        <type>Scripted REST Resource</type>
+        <update_guid>a634cc62bd14d710195bb1a9ac51325b</update_guid>
+        <update_guid_history>a634cc62bd14d710195bb1a9ac51325b:2003142220</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete/>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-08 05:12:30</sys_created_on>
+        <sys_db_object display_value="" name="sys_ws_operation">sys_ws_operation</sys_db_object>
+        <sys_id>35c454cefb844eb48c8b870d1f635151</sys_id>
+        <sys_metadata>6e34cc628314d710f22797efeeaad354</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>current</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_scope_delete display_value="">4833286af809459cad5860bb9c581ce4</sys_scope_delete>
+        <sys_update_name>sys_ws_operation_6e34cc628314d710f22797efeeaad354</sys_update_name>
+        <sys_update_version display_value="sys_ws_operation_6e34cc628314d710f22797efeeaad354">2e34cc628314d710f22797efeeaad35c</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-08 05:12:30</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

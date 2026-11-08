@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_operation">
+    <sys_ws_operation action="DELETE">
+        <active>true</active>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_operation_uri/>
+        <enforce_acl/>
+        <http_method>GET</http_method>
+        <name>compare</name>
+        <operation_script><![CDATA[/**
+ * Scripted REST resource: GET /compare?a=<instance>&b=<instance>[&categories=plugins,applications][&sys_ids=true]
+ * a / b: instance CI sys_id or instance_name. Returns the drift result
+ * (schema configurationnow.compare/0.1). Read-only.
+ * Requires x_2160899_driftw_0.configuration_read (checked here as well).
+ */
+(function process(request, response) {
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_read')) {
+        response.setStatus(403);
+        response.setBody({ error: 'Requires role x_2160899_driftw_0.configuration_read' });
+        return;
+    }
+    var q = request.queryParams;
+    var a = q.a ? String(q.a[0]) : '', b = q.b ? String(q.b[0]) : '';
+    if (!a || !b) {
+        response.setStatus(400);
+        response.setBody({ error: 'Query parameters a and b (instance name or sys_id) are required' });
+        return;
+    }
+    var opts = {};
+    if (q.categories && q.categories.length) opts.categories = String(q.categories[0]).split(',');
+    if (q.sys_ids && q.sys_ids.length) opts.sysIds = String(q.sys_ids[0]) == 'true';
+    try {
+        var result = new ConfigNowCompare().compare(a, b, opts);
+        response.setStatus(200);
+        response.setHeader('Cache-Control', 'no-store');
+        response.setBody(result);
+    } catch (e) {
+        var msg = String(e && e.message ? e.message : e);
+        response.setStatus(msg.indexOf('Instance not found') == 0 ? 404 : 500);
+        response.setBody({ error: msg });
+    }
+})(request, response);
+]]></operation_script>
+        <operation_uri>/api/x_2160899_driftw_0/configurationnow/compare</operation_uri>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <relative_path>/compare</relative_path>
+        <request_example/>
+        <requires_acl_authorization>false</requires_acl_authorization>
+        <requires_authentication>true</requires_authentication>
+        <requires_snc_internal_role>true</requires_snc_internal_role>
+        <short_description/>
+        <support_trailing_slash>false</support_trailing_slash>
+        <sys_class_name>sys_ws_operation</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-04 14:49:34</sys_created_on>
+        <sys_id>8c7a80ae8314d710f22797efeeaad3ab</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>compare</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_ws_operation_8c7a80ae8314d710f22797efeeaad3ab</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 16:55:13</sys_updated_on>
+        <web_service_definition display_value="ConfigurationNOW">9234cc628314d710f22797efeeaad34b</web_service_definition>
+        <web_service_version/>
+    </sys_ws_operation>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</application>
+        <file_path/>
+        <instance_id>4f112ca9935853dc611eddd548373ca4</instance_id>
+        <instance_name>dev466156</instance_name>
+        <merge_base/>
+        <name>sys_ws_operation_8c7a80ae8314d710f22797efeeaad3ab</name>
+        <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update table="sys_ws_operation"&gt;&lt;sys_ws_operation action="INSERT_OR_UPDATE"&gt;&lt;active&gt;true&lt;/active&gt;&lt;consumes&gt;application/json,application/xml,text/xml&lt;/consumes&gt;&lt;consumes_customized&gt;false&lt;/consumes_customized&gt;&lt;default_operation_uri/&gt;&lt;enforce_acl/&gt;&lt;http_method&gt;GET&lt;/http_method&gt;&lt;name&gt;compare&lt;/name&gt;&lt;operation_script&gt;&lt;![CDATA[/**
+ * Scripted REST resource: GET /compare?a=&lt;instance&gt;&amp;b=&lt;instance&gt;[&amp;categories=plugins,applications][&amp;sys_ids=true]
+ * a / b: instance CI sys_id or instance_name. Returns the drift result
+ * (schema configurationnow.compare/0.1). Read-only.
+ * Requires x_2160899_driftw_0.configuration_read (checked here as well).
+ */
+(function process(request, response) {
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_read')) {
+        response.setStatus(403);
+        response.setBody({ error: 'Requires role x_2160899_driftw_0.configuration_read' });
+        return;
+    }
+    var q = request.queryParams;
+    var a = q.a ? String(q.a[0]) : '', b = q.b ? String(q.b[0]) : '';
+    if (!a || !b) {
+        response.setStatus(400);
+        response.setBody({ error: 'Query parameters a and b (instance name or sys_id) are required' });
+        return;
+    }
+    var opts = {};
+    if (q.categories &amp;&amp; q.categories.length) opts.categories = String(q.categories[0]).split(',');
+    if (q.sys_ids &amp;&amp; q.sys_ids.length) opts.sysIds = String(q.sys_ids[0]) == 'true';
+    try {
+        var result = new ConfigNowCompare().compare(a, b, opts);
+        response.setStatus(200);
+        response.setHeader('Cache-Control', 'no-store');
+        response.setBody(result);
+    } catch (e) {
+        var msg = String(e &amp;&amp; e.message ? e.message : e);
+        response.setStatus(msg.indexOf('Instance not found') == 0 ? 404 : 500);
+        response.setBody({ error: msg });
+    }
+})(request, response);
+]]&gt;&lt;/operation_script&gt;&lt;operation_uri&gt;/api/x_2160899_driftw_0/configurationnow/compare&lt;/operation_uri&gt;&lt;produces&gt;application/json,application/xml,text/xml&lt;/produces&gt;&lt;produces_customized&gt;false&lt;/produces_customized&gt;&lt;relative_path&gt;/compare&lt;/relative_path&gt;&lt;request_example/&gt;&lt;requires_acl_authorization&gt;false&lt;/requires_acl_authorization&gt;&lt;requires_authentication&gt;true&lt;/requires_authentication&gt;&lt;requires_snc_internal_role&gt;true&lt;/requires_snc_internal_role&gt;&lt;short_description/&gt;&lt;support_trailing_slash&gt;false&lt;/support_trailing_slash&gt;&lt;sys_class_name&gt;sys_ws_operation&lt;/sys_class_name&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2026-11-04 14:49:34&lt;/sys_created_on&gt;&lt;sys_id&gt;8c7a80ae8314d710f22797efeeaad3ab&lt;/sys_id&gt;&lt;sys_mod_count&gt;2&lt;/sys_mod_count&gt;&lt;sys_name&gt;compare&lt;/sys_name&gt;&lt;sys_package display_value="Driftwood" source="x_2160899_driftw_0"&gt;23f0006a83d0d710f22797efeeaad3e1&lt;/sys_package&gt;&lt;sys_policy/&gt;&lt;sys_scope display_value="Driftwood"&gt;23f0006a83d0d710f22797efeeaad3e1&lt;/sys_scope&gt;&lt;sys_update_name&gt;sys_ws_operation_8c7a80ae8314d710f22797efeeaad3ab&lt;/sys_update_name&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2026-11-07 16:55:13&lt;/sys_updated_on&gt;&lt;web_service_definition display_value="ConfigurationNOW"&gt;9234cc628314d710f22797efeeaad34b&lt;/web_service_definition&gt;&lt;web_service_version/&gt;&lt;/sys_ws_operation&gt;&lt;/record_update&gt;</payload>
+        <payload_hash>-1587606551</payload_hash>
+        <record_name>compare</record_name>
+        <reverted_from/>
+        <source>1018b13e83109b10f22797efeeaad38f</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-07 16:55:13</sys_created_on>
+        <sys_id>02f384e383d89f10f22797efeeaad377</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>1a1b6ef878b0000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-07 16:55:13</sys_updated_on>
+        <type>Scripted REST Resource</type>
+        <update_guid>4ef384e3fdd89f10930eb39f38401275</update_guid>
+        <update_guid_history>4ef384e3fdd89f10930eb39f38401275:-1587606551,a24c40a24c54d7106b714f27dd81c40a:-1086889798,007a80aeeb14d7100b2183aaaf43c0af:-444384074</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete/>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-08 05:12:31</sys_created_on>
+        <sys_db_object display_value="" name="sys_ws_operation">sys_ws_operation</sys_db_object>
+        <sys_id>67dcd97c551340e88f52335f0880ae40</sys_id>
+        <sys_metadata>8c7a80ae8314d710f22797efeeaad3ab</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>compare</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_scope_delete display_value="">4833286af809459cad5860bb9c581ce4</sys_scope_delete>
+        <sys_update_name>sys_ws_operation_8c7a80ae8314d710f22797efeeaad3ab</sys_update_name>
+        <sys_update_version display_value="sys_ws_operation_8c7a80ae8314d710f22797efeeaad3ab">02f384e383d89f10f22797efeeaad377</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-08 05:12:31</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

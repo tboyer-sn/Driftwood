@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_page">
+    <sys_ui_page action="INSERT_OR_UPDATE">
+        <category>general</category>
+        <client_script><![CDATA[/* UI Page client script: health (x_2160899_driftw_0) */
+addLoadEvent(function () {
+    var API = '/api/x_2160899_driftw_0/driftwood';
+    var $ = function (id) { return document.getElementById(id); };
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.appendChild(document.createTextNode(String(text))); return e; }
+    function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+
+    /* Light/dark: follows the surrounding theme; the Theme button overrides it (remembered per browser). */
+    function initTheme(rootId, btnId) {
+        var KEY = 'x_2160899_driftw_0.theme';
+        var root = document.getElementById(rootId), btn = document.getElementById(btnId);
+        if (!root) return;
+        function lum(c) {
+            var m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s\/]+([\d.]+))?/.exec(c || '');
+            if (!m || (m[4] !== undefined && parseFloat(m[4]) == 0)) return -1;
+            return 0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3];
+        }
+        function detect() {
+            try {
+                for (var n = root.parentNode; n && n.nodeType == 1; n = n.parentNode) {
+                    var l = lum(window.getComputedStyle(n).backgroundColor);
+                    if (l >= 0) return l < 128;
+                }
+                return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            } catch (e) { return false; }
+        }
+        function apply(dark) {
+            root.className = root.className.replace(/\s*cn-dark/g, '') + (dark ? ' cn-dark' : '');
+            if (btn) btn.textContent = dark ? 'Light' : 'Dark';
+        }
+        var saved = null;
+        try { saved = window.localStorage.getItem(KEY); } catch (e) { saved = null; }
+        apply(saved ? saved == 'dark' : detect());
+        if (btn) btn.onclick = function () {
+            var dark = root.className.indexOf('cn-dark') == -1;
+            apply(dark);
+            try { window.localStorage.setItem(KEY, dark ? 'dark' : 'light'); } catch (e) { /* not stored */ }
+        };
+    }
+
+    var LABEL = { ok: 'Healthy', info: 'Healthy (notes)', warn: 'Needs attention', fail: 'Problem' };
+    function load() {
+        $('hl-overall').className = 'overall info'; $('hl-overall').textContent = 'Checking…';
+        var x = new XMLHttpRequest();
+        x.open('GET', API + '/health', true);
+        x.setRequestHeader('Accept', 'application/json');
+        x.setRequestHeader('X-UserToken', window.g_ck);
+        x.onreadystatechange = function () {
+            if (x.readyState != 4) return;
+            var r = null;
+            try { r = JSON.parse(x.responseText).result; } catch (e) { r = null; }
+            if (x.status == 403) { $('hl-overall').className = 'overall fail'; $('hl-overall').textContent = 'Needs role x_2160899_driftw_0.configuration_admin'; return; }
+            if (x.status != 200 || !r || !r.checks) { $('hl-overall').className = 'overall fail'; $('hl-overall').textContent = 'Health check failed (' + x.status + ')' + (r && r.error ? ': ' + r.error : ''); return; }
+            render(r);
+        };
+        x.send(null);
+    }
+    function render(r) {
+        $('hl-overall').className = 'overall ' + r.status;
+        $('hl-overall').textContent = LABEL[r.status] || r.status;
+        $('hl-meta').textContent = r.instance_name + ' · ' + r.collector_version + ' · ' + r.generated_at + ' UTC · ' + r.counts.ok + ' ok, ' + r.counts.info + ' info, ' +
+            r.counts.warn + ' warn, ' + r.counts.fail + ' fail · ' + r.duration_ms + ' ms';
+        var host = $('hl-result'); clear(host);
+        var t = el('table'), th = el('thead'), hr = el('tr');
+        ['Area', 'Check', 'Status', 'Detail'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+        th.appendChild(hr); t.appendChild(th);
+        var tb = el('tbody'), order = { fail: 0, warn: 1, info: 2, ok: 3 };
+        var rows = r.checks.slice().sort(function (a, b) { return (order[a.status] - order[b.status]); });
+        for (var i = 0; i < rows.length; i++) {
+            var c = rows[i], tr = el('tr');
+            tr.appendChild(el('td', null, c.area)); tr.appendChild(el('td', null, c.name));
+            var td = el('td'); td.appendChild(el('span', 'pill ' + c.status, c.status)); tr.appendChild(td);
+            tr.appendChild(el('td', null, c.detail));
+            tb.appendChild(tr);
+        }
+        t.appendChild(tb); host.appendChild(t);
+    }
+    $('hl-refresh').onclick = load;
+    initTheme('hl', 'hl-theme');
+    load();
+});
+]]></client_script>
+        <description>Driftwood: installation health self-check (v0.6)</description>
+        <direct>false</direct>
+        <endpoint>x_2160899_driftw_0_health.do</endpoint>
+        <html><![CDATA[<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  UI Page:  health      (endpoint: x_2160899_driftw_0_health.do)
+  Scope:    x_2160899_driftw_0
+  HTML:     this file
+  Client script: x_2160899_driftw_0_health.client.js
+  Module:   Driftwood > Health  (roles: x_2160899_driftw_0.configuration_admin)
+-->
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+<style>
+  #hl { --cn-fg: #1f2933; --cn-sub: #616e7c; --cn-bg: #fff; --cn-line: #d9e2ec; --cn-head: #f0f4f8; --cn-btn: #9aa5b1;
+        --cn-ok-bg: #e3f4e8; --cn-ok: #1d6b3a; --cn-info-bg: #e6eef6; --cn-info: #1f4e79; --cn-warn-bg: #fff3c4; --cn-warn: #8a5a00; --cn-fail-bg: #fbe3e1; --cn-fail: #9b1c15; }
+  #hl.cn-dark { color-scheme: dark; --cn-fg: #e4e7eb; --cn-sub: #9aa5b1; --cn-bg: #1b2028; --cn-line: #3a4450; --cn-head: #262d36; --cn-btn: #52606d;
+        --cn-ok-bg: #1f3a2a; --cn-ok: #7cd39a; --cn-info-bg: #1e3247; --cn-info: #9cc3ee; --cn-warn-bg: #3d3220; --cn-warn: #f0b35c; --cn-fail-bg: #43201e; --cn-fail: #ffb4ab; }
+  #hl { background: var(--cn-bg); color: var(--cn-fg); border-radius: 6px; padding: 16px 24px; max-width: 1200px; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  #hl h1 { font-size: 22px; margin: 0 0 4px 0; font-weight: 600; }
+  #hl .sub { color: var(--cn-sub); font-size: 13px; margin-bottom: 14px; }
+  #hl button { border: 1px solid var(--cn-btn); background: var(--cn-bg); color: var(--cn-fg); border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  #hl .theme { float: right; font-size: 12px; padding: 3px 9px; }
+  #hl .overall { display: inline-block; font-size: 15px; font-weight: 600; padding: 6px 14px; border-radius: 6px; margin: 4px 12px 14px 0; }
+  #hl table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  #hl th { text-align: left; background: var(--cn-head); padding: 6px 8px; border-bottom: 1px solid var(--cn-line); }
+  #hl td { padding: 6px 8px; border-bottom: 1px solid var(--cn-line); vertical-align: top; word-break: break-word; }
+  #hl .pill { display: inline-block; padding: 1px 9px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  #hl .ok { background: var(--cn-ok-bg); color: var(--cn-ok); } #hl .info { background: var(--cn-info-bg); color: var(--cn-info); }
+  #hl .warn { background: var(--cn-warn-bg); color: var(--cn-warn); } #hl .fail { background: var(--cn-fail-bg); color: var(--cn-fail); }
+  #hl .muted { color: var(--cn-sub); }
+</style>
+<div id="hl">
+  <button id="hl-theme" class="theme" type="button" title="Switch light / dark">Theme</button>
+  <h1>Driftwood Health</h1>
+  <div class="sub">Read-only self-check of this installation. The same result is available from <code>GET /api/x_2160899_driftw_0/driftwood/health</code> and is logged daily at 03:30.</div>
+  <div><span id="hl-overall" class="overall info">Checking…</span><button id="hl-refresh" type="button">Run again</button> <span id="hl-meta" class="muted"></span></div>
+  <div id="hl-result"></div>
+</div>
+</j:jelly>
+]]></html>
+        <name>health</name>
+        <processing_script/>
+        <sys_class_name>sys_ui_page</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-11-08 05:12:31</sys_created_on>
+        <sys_id>92bc22a383501350f22797efeeaad3a2</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>health</sys_name>
+        <sys_package display_value="Driftwood" source="x_2160899_driftw_0">23f0006a83d0d710f22797efeeaad3e1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Driftwood">23f0006a83d0d710f22797efeeaad3e1</sys_scope>
+        <sys_update_name>sys_ui_page_92bc22a383501350f22797efeeaad3a2</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-11-08 05:12:31</sys_updated_on>
+    </sys_ui_page>
+</record_update>
