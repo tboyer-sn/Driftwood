@@ -183,6 +183,8 @@ ConfigNowWriter.prototype = {
         rg.setValue('run_id', runId);
         rg.setValue('instance', instId);
         rg.setValue('source', source);
+        // Security review S9: how the run was started (who: sys_created_by)
+        if (rg.isValidField('run_trigger')) rg.setValue('run_trigger', options.trigger || (source == 'import' ? 'import' : 'script'));
         rg.setValue('mode', 'full');
         rg.setValue('collected_at', now);
         rg.setValue('persisted_at', persistedAt);
@@ -204,9 +206,16 @@ ConfigNowWriter.prototype = {
     },
 
     _sourceUrl: function (base, it) {
-        if (!base || !it.source_table || !it.source_sys_id) return '';
+        if (!base || !this._table(it.source_table) || !this._sysId(it.source_sys_id)) return '';
         return base + it.source_table + '.do?sys_id=' + it.source_sys_id;
     },
+
+    /* Security review S7: imported snapshots are not trusted. A source table
+       name and sys_id are kept only in their platform form; anything else is
+       stored empty, so no link is built from it. */
+    _table: function (t) { return /^[a-z0-9_]{1,80}$/.test(String(t || '')) ? String(t) : ''; },
+    // sys_ids are usually 32 hex characters, but not always (global scope: 'global')
+    _sysId: function (id) { return /^[0-9A-Za-z_]{1,32}$/.test(String(id || '')) ? String(id) : ''; },
 
     _upsertInstance: function (snapshot, now) {
         var inst = snapshot.instance || {};
@@ -300,7 +309,7 @@ ConfigNowWriter.prototype = {
                 if (fixLink || fixObj) {
                     var bf = new GlideRecord(table);
                     if (bf.get(cur.sys_id)) {
-                        if (fixLink) { bf.setValue('source_table', it.source_table || ''); bf.setValue('source_url', url); }
+                        if (fixLink) { bf.setValue('source_table', this._table(it.source_table)); bf.setValue('source_url', url); }
                         if (fixObj) { bf.setValue('object', want); if (want) { ctx.linked++; ctx.objects.touch(want); } }
                         bf.update();
                     }
@@ -354,9 +363,9 @@ ConfigNowWriter.prototype = {
         gr.setValue('value_hash', it.hash);
         gr.setValue('item_attributes', this._clip(JSON.stringify(it.attributes || {}), 4000));
         gr.setValue('runtime', this._clip(JSON.stringify(it.runtime || {}), 4000));
-        gr.setValue('source_sys_id', it.source_sys_id || '');
+        gr.setValue('source_sys_id', this._sysId(it.source_sys_id));
         if (hasLink) {
-            gr.setValue('source_table', it.source_table || '');
+            gr.setValue('source_table', this._table(it.source_table));
             gr.setValue('source_url', url || '');
         }
         gr.setValue('is_secure', it.secure ? true : false);

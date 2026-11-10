@@ -21,13 +21,15 @@
     if (q.categories && q.categories.length) opts.categories = String(q.categories[0]).split(',');
     if (q.sys_ids && q.sys_ids.length) opts.sysIds = String(q.sys_ids[0]) == 'true';
     try {
-        var result = new ConfigNowCompare().compare(a, b, opts);
+        var result = new ConfigNowCompare({ secure: true }).compare(a, b, opts);
         response.setStatus(200);
         response.setHeader('Cache-Control', 'no-store');
         response.setBody(result);
     } catch (e) {
         var msg = String(e && e.message ? e.message : e);
-        response.setStatus(msg.indexOf('Instance not found') == 0 ? 404 : 500);
-        response.setBody({ error: msg });
+        if (msg.indexOf('Instance not found') == 0) { response.setStatus(404); response.setBody({ error: msg }); return; }
+        gs.error('[Driftwood] GET /compare failed: ' + msg);
+        response.setStatus(500);
+        response.setBody({ error: 'Comparison failed; the details are in the system log' });
     }
 })(request, response);

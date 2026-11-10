@@ -15,6 +15,18 @@ var ConfigNowConfig = Class.create();
 ConfigNowConfig.SCOPE = 'x_2160899_driftw_0';
 ConfigNowConfig.COLLECTOR_VERSION = '0.6.0-dev';
 
+/**
+ * Data access (security review S3): every read made on behalf of a person
+ * goes through GlideRecordSecure, so Driftwood's ACLs (rows and fields) apply.
+ * secure = false is for system work only, and each such caller says why:
+ * the collector reading platform tables (a least-privilege account can't read
+ * them through ACLs; dropped rows would look like removals), the writer, the
+ * drift engine, retention, migration and Health (an admin-only diagnostic).
+ */
+ConfigNowConfig.record = function (table, secure) {
+    return secure ? new GlideRecordSecure(table) : new GlideRecord(table);
+};
+
 ConfigNowConfig.DEFAULTS = {
     /* Logical table names -> physical names in the scoped app.
        A table created as "cmdb_ci_sn_instance" inside scope x_2160899_driftw_0 is

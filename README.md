@@ -6,7 +6,7 @@
 
 Driftwood records a ServiceNow instance's own platform configuration, keeps its history, and shows how instances differ: Dev against Test against Prod, or one release against another. Every tracked thing (a table, a property, a plugin…) is **one object across all instances**, with each instance's observation underneath it and its drift status stored on it. Instances that don't have the app can still be compared by exporting a snapshot from them with a background script.
 
-> **Procedures:** `RUNBOOK.md` · **Status and decisions:** `Driftwood-go-no-go.md` · **Current plan:** `v0.6-plan.md` · **Model:** `Data-model-proposal.md` · **UI direction:** `UI-roadmap.md` · Superseded ConfigurationNOW POC documents are in `archive/`.
+> **Procedures:** `RUNBOOK.md` · **Security:** `Security-review-v0.6.md` · **Status and decisions:** `Driftwood-go-no-go.md` · **Current plan:** `v0.6-plan.md` · **Model:** `Data-model-proposal.md` · **UI direction:** `UI-roadmap.md` · Superseded ConfigurationNOW POC documents are in `archive/`.
 
 ## What it collects
 
@@ -72,7 +72,7 @@ Objects lists · object form · Compare across instances (deep link) · Health p
 | `admin` (app) | Contains `configuration_admin` and `configuration_read_secure` |
 | `collector` | For the collector service account (H07, not yet in use) |
 
-A stricter, controlled access model is an open design topic (see `v0.6-plan.md`, *Open topics*).
+Every read made for a person (REST API, pages) goes through `GlideRecordSecure`, so these roles' ACLs, and any later row or field rules, decide what is returned. `GET /current` gives read-only users the stored observations; only `configuration_admin` triggers a live read. A stricter, controlled access model is being designed: only the collector account will write Driftwood data (`Security-review-v0.6.md`, phase 2).
 
 ## Install and upgrade
 

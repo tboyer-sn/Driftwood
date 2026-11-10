@@ -11,5 +11,5 @@
     }
     response.setStatus(200);
     response.setHeader('Cache-Control', 'no-store');
-    response.setBody({ local: gs.getProperty('instance_name'), instances: new ConfigNowCompare().listInstances() });
+    response.setBody({ local: gs.getProperty('instance_name'), instances: new ConfigNowCompare({ secure: true }).listInstances() });
 })(request, response);

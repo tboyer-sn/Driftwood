@@ -5,13 +5,18 @@
  * Requires authentication: true
  * ACLs / roles:       restrict to x_2160899_driftw_0.configuration_read (see README)
  *
- * Returns a live snapshot of the current instance's settings. Nothing is
- * written. Optional query params:
- *   categories=plugins,applications   limit the categories collected
+ * Returns this instance's settings as a snapshot. Nothing is written.
+ * Optional query params:
+ *   categories=plugins,applications   limit the categories
  *
- * IMPORTANT: the collector uses GlideRecord, which does not enforce ACLs, so
- * this resource MUST be role-restricted. Secure-property hashes are removed
- * unless the caller has x_2160899_driftw_0.configuration_read_secure.
+ * Security review S1:
+ *   - x_2160899_driftw_0.configuration_admin gets a LIVE read: the collector
+ *     reads platform tables with GlideRecord (no ACLs), so only admins may
+ *     trigger it. Secure-property hashes are removed unless the caller also
+ *     has x_2160899_driftw_0.configuration_read_secure.
+ *   - Everyone else with configuration_read gets the STORED observations of
+ *     this instance, read through GlideRecordSecure: their own ACLs decide
+ *     which rows and fields they see (snapshot.stored = true).
  *
  * This endpoint is also the future contract for cross-instance collection:
  * a central instance calls GET /current on each Dev/Test/Sub-Prod/Prod node.
@@ -27,6 +32,19 @@
     var opts = {};
     var cats = request.queryParams.categories;
     if (cats && cats.length) opts.categories = String(cats[0]).split(',');
+
+    if (!gs.hasRole('x_2160899_driftw_0.configuration_admin')) {
+        var stored = new ConfigNowCompare({ secure: true }).storedSnapshot(opts);
+        if (!stored) {
+            response.setStatus(404);
+            response.setBody({ error: 'This instance has not been collected yet' });
+            return;
+        }
+        response.setStatus(200);
+        response.setHeader('Cache-Control', 'no-store');
+        response.setBody(stored);
+        return;
+    }
 
     var snapshot = new ConfigNowCollector(opts).collect();
 

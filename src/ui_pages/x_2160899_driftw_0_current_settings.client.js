@@ -92,6 +92,10 @@ addLoadEvent(function () {
         xhr.setRequestHeader('X-UserToken', window.g_ck);
         xhr.onreadystatechange = function () {
             if (xhr.readyState != 4) return;
+            if (xhr.status == 404) {
+                $('cfgnow-status').textContent = 'This instance has not been collected yet – an admin can use Collect now';
+                return;
+            }
             if (xhr.status != 200) {
                 $('cfgnow-status').textContent = 'Error ' + xhr.status + ' – check role x_2160899_driftw_0.configuration_read';
                 return;
@@ -104,8 +108,9 @@ addLoadEvent(function () {
 
     function render() {
         var inst = data.instance || {};
-        $('cfgnow-sub').textContent = (inst.instance_name || '') + ' · collected ' + data.collected_at +
-            ' UTC in ' + data.duration_ms + ' ms · collector ' + data.collector_version;
+        $('cfgnow-sub').textContent = data.stored
+            ? (inst.instance_name || '') + ' · stored data from the collection of ' + data.collected_at + ' UTC (shown as your access allows) · collector ' + data.collector_version
+            : (inst.instance_name || '') + ' · collected ' + data.collected_at + ' UTC in ' + data.duration_ms + ' ms · collector ' + data.collector_version;
         $('cfgnow-status').textContent = '';
 
         var w = $('cfgnow-warnings'); clear(w);

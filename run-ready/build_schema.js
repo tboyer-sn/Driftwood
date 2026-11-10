@@ -138,6 +138,8 @@
             ['instance', 'Instance', 'reference', 32, { ref: T_INSTANCE }],
             ['source', 'Source', 'choice', 40, { choices: [['local', 'Local collection'], ['import', 'Imported snapshot']] }],
             ['mode', 'Mode', 'choice', 40, { choices: [['full', 'Full'], ['incremental', 'Incremental']] }],
+            ['run_trigger', 'Started by', 'choice', 40, { choices: [['job', 'Daily job'], ['collect_now', 'Collect now'], ['rest', 'REST POST /collect'],
+                ['import', 'Snapshot import'], ['script', 'Script']] }],
             ['collected_at', 'Collected at', 'datetime', 40],
             ['persisted_at', 'Saved at', 'datetime', 40],
             ['collector_version', 'Collector version', 'string', 60],

@@ -49,7 +49,7 @@ ConfigNowImporter.prototype = {
             throw new Error('Snapshot for ' + name + ' (' + snapshot.collected_at + ' UTC) is older than the stored data (' +
                 existing + ' UTC). Use force to import it anyway.');
         }
-        var res = new ConfigNowWriter({ config: this.config }).persist(snapshot, { timestamp: snapshot.collected_at, source: 'import' });
+        var res = new ConfigNowWriter({ config: this.config }).persist(snapshot, { timestamp: snapshot.collected_at, source: 'import', trigger: 'import' });
         return {
             instance_name: name,
             instance_sys_id: res.instance_sys_id,

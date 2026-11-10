@@ -10,7 +10,7 @@
  */
 (function () {
     var snapshot = new ConfigNowCollector({ incremental: true }).collect();
-    var result = new ConfigNowWriter().persist(snapshot);
+    var result = new ConfigNowWriter().persist(snapshot, { trigger: 'collect_now' });
     var t = result.totals;
     gs.addInfoMessage('Driftwood: ' + t.inserted + ' new, ' + t.updated + ' changed, ' +
         t.restored + ' restored, ' + t.removed + ' no longer present, ' + t.unchanged + ' unchanged (' +

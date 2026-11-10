@@ -570,6 +570,19 @@ The fix script added in O05 was named *Driftwood - Move plugins to plain records
 | J35 | `install_code.js`, `UPDATE_EXISTING = true`, dry run then live | `FIX "Driftwood - Move plugins to plain record" RENAME …`, one `DELETE duplicate` per extra copy, `FIX Driftwood - Move plugins off the CMDB UPDATE (after the rename)`, plus `SI ConfigNowMigration UPDATE` and `SI ConfigNowHealth UPDATE` (new name in their messages) |
 | J36 | *Driftwood › Health* › Run again | No warnings: *Healthy (notes)*. Commit on `0.6.0`: "O06 health; fix script name fix". |
 
+### O12: Security phase 1 (GlideRecordSecure on reads)
+
+From `Security-review-v0.6.md`. Everything a person reads through the REST API or the pages goes through `GlideRecordSecure` (the comparison's secure mode), so Driftwood's ACLs, including field ACLs and any future row rules, decide what comes back. `GET /current` no longer runs the collector for read-only users: they get this instance's stored observations, as their ACLs allow; a live read needs `configuration_admin`. Every REST operation now requires the platform's REST ACL check. Imported link fields are validated, unexpected errors are logged rather than returned, and runs record how they were started (*Started by*: daily job, Collect now, REST, import, script).
+
+| Step | Where | Expected |
+|---|---|---|
+| J37 | `build_schema.js`, dry run then live | `1 column(s), 5 choice(s)` (`collection_run.run_trigger`) |
+| J38 | `install_code.js`, `UPDATE_EXISTING = true` | `SI ConfigNowConfig`, `ConfigNowCompare`, `ConfigNowWriter`, `ConfigNowImporter` UPDATE: `would update: 4` |
+| J39 | Elevate, `install_ui.js`, `UPDATE_EXISTING = true` | About `Would create: 0, would update: 11`: the 7 REST operations (`requires_acl_authorization`, and new scripts on 6), the Collect now button, the collect job, the settings page, the Collection Runs list layout |
+| J40 | Check as admin | Health: *Healthy (notes)*, still 59 privileges. Collect now: the new run shows *Started by: Collect now*. The Drift Report works as before. |
+| J41 | Check as a reader | Impersonate a user with only `configuration_read`: *Current Instance Settings* says "stored data … shown as your access allows" and has no secure hashes; the Drift Report works; Collect now is refused. This is the start of H06. |
+| J42 | Commit on `0.6.0` (GitHub Desktop): "Security phase 1: GlideRecordSecure on reads" | |
+
 ## 6. Release matrix
 
 | Release | Dry run (A) | Git import (C) | D1 run 1 | D1 run 2 | UI (D4) | Notes |

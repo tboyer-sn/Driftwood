@@ -12,7 +12,7 @@
     }
     try {
         var snapshot = new ConfigNowCollector({ incremental: true }).collect();
-        var res = new ConfigNowWriter().persist(snapshot);
+        var res = new ConfigNowWriter().persist(snapshot, { trigger: 'rest' });
         response.setStatus(200);
         response.setBody({
             instance_name: snapshot.instance ? snapshot.instance.instance_name : '',
@@ -27,7 +27,8 @@
             warnings: snapshot.warnings ? snapshot.warnings.length : 0
         });
     } catch (e) {
+        gs.error('[Driftwood] POST /collect failed: ' + String(e && e.message ? e.message : e));
         response.setStatus(500);
-        response.setBody({ error: String(e && e.message ? e.message : e) });
+        response.setBody({ error: 'Collection failed; the details are in the system log' });
     }
 })(request, response);

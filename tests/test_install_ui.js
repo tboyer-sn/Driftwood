@@ -270,4 +270,13 @@ assert.match(col.operation_script, /configuration_admin/); assert.match(col.oper
   assert.ok(!H.sys_ws_definition.find(d => d.service_id === 'configurationnow')); assert.strictEqual(H.sys_ws_operation.filter(o => o.web_service_definition === 'OLDAPI').length, 0);
   console.log('O06: inactive /configurationnow deleted with its 6 operations (UPDATE_EXISTING only)');
 }
+// security phase 1 (S5): every operation requires the platform's REST ACL check; an install without it is updated
+{
+  assert.ok(S.sys_ws_operation.every(o => o.requires_acl_authorization === 'true'), 'all operations');
+  const A = JSON.parse(JSON.stringify(S));
+  A.sys_ws_operation.forEach(o => { o.requires_acl_authorization = 'false'; });
+  const oa = run(A, { elevated: true, update: true });
+  assert.match(oa, /REST   GET \/current  UPDATE \(requires_acl_authorization\)/); assert.match(oa, /Would create: 0, would update: 7,/);
+  console.log('S5: Requires ACL authorization on all 7 operations (7 updates on an older install)');
+}
 console.log('SECTION G INSTALLER TESTS PASSED');

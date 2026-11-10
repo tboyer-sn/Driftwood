@@ -56,11 +56,11 @@ function fresh(withInstance = true) {
 }
 // 1. dry run writes nothing
 let S = fresh(); const before = JSON.stringify(S);
-let o = run(true, S); assert.strictEqual(JSON.stringify(S), before); assert.match(o, /Would create: 0 role record\(s\), 7 table\(s\), 102 column\(s\), 53 choice\(s\)/); console.log(o.split('\n').slice(-4).join('\n'));
+let o = run(true, S); assert.strictEqual(JSON.stringify(S), before); assert.match(o, /Would create: 0 role record\(s\), 7 table\(s\), 103 column\(s\), 58 choice\(s\)/); console.log(o.split('\n').slice(-4).join('\n'));
 // 2. wrong picker live => abort, nothing written
 o = run(false, S, 'global'); assert.match(o, /ABORT/); assert.strictEqual(JSON.stringify(S), before);
 // 3. live run
-o = run(false, S); assert.match(o, /Created: 0 role record\(s\), 7 table\(s\), 102 column\(s\), 53 choice\(s\)/); assert.ok(!/!!/.test(o), o);
+o = run(false, S); assert.match(o, /Created: 0 role record\(s\), 7 table\(s\), 103 column\(s\), 58 choice\(s\)/); assert.ok(!/!!/.test(o), o);
 assert.ok(S.sys_dictionary.every(d => !d.name.startsWith('x_') || d.sys_scope === APP));
 const pl = S.sys_db_object.find(t => t.name.endsWith('tracked_plugin')); assert.strictEqual(pl.super_class, S.sys_db_object.find(t => t.name.endsWith('tracked_table')).sys_id);
 console.log(o.split('\n').filter(l => /VERIFY|Created/.test(l)).join('\n'));
@@ -69,8 +69,8 @@ const after = JSON.stringify(S); o = run(false, S); assert.strictEqual(JSON.stri
 // 5. Completely fresh instance (empty app): roles + all 4 tables scripted
 {
   const F = fresh(false);
-  let o2 = run(true, F); assert.match(o2, /Would create: 8 role record\(s\), 8 table\(s\), 102 column\(s\), 53 choice\(s\)/);
-  o2 = run(false, F); assert.match(o2, /Created: 8 role record\(s\), 8 table\(s\), 102 column\(s\), 53 choice\(s\)/); assert.ok(!/!!/.test(o2), o2);
+  let o2 = run(true, F); assert.match(o2, /Would create: 8 role record\(s\), 8 table\(s\), 103 column\(s\), 58 choice\(s\)/);
+  o2 = run(false, F); assert.match(o2, /Created: 8 role record\(s\), 8 table\(s\), 103 column\(s\), 58 choice\(s\)/); assert.ok(!/!!/.test(o2), o2);
   assert.strictEqual(F.sys_user_role.length, 5); assert.strictEqual(F.sys_user_role_contains.length, 3);
   const inst = F.sys_db_object.find(t => t.name === 'x_2160899_driftw_0_cmdb_ci_sn_instance');
   assert.strictEqual(inst.super_class, 't_cmdb_ci_appl_now_app'); assert.strictEqual(inst.is_extendable, '1');
@@ -88,11 +88,11 @@ const after = JSON.stringify(S); o = run(false, S); assert.strictEqual(JSON.stri
   F.sys_db_object = F.sys_db_object.filter(t => !T05.includes(t.name));
   F.sys_dictionary = F.sys_dictionary.filter(d => !T05.includes(d.name) && !['source_table', 'source_url', 'retention_days'].includes(d.element));
   F.sys_choice = F.sys_choice.filter(c => !T05.includes(c.name) && c.value !== 'update_sets');
-  o2 = run(true, F); assert.match(o2, /Would create: 0 role record\(s\), 2 table\(s\), 34 column\(s\), 20 choice\(s\)/);
+  o2 = run(true, F); assert.match(o2, /Would create: 0 role record\(s\), 2 table\(s\), 35 column\(s\), 25 choice\(s\)/);
   const ur = F.sys_db_object.length; o2 = run(false, F); assert.ok(!/!!/.test(o2), o2); assert.strictEqual(F.sys_db_object.length, ur + 2);
   const url = F.sys_dictionary.find(d => d.name === 'x_2160899_driftw_0_tracked_item' && d.element === 'source_url');
   assert.strictEqual(url.internal_type, 'url'); assert.strictEqual(String(url.max_length), '1024');
-  console.log('v0.4 -> v0.5 upgrade: 2 tables, 34 columns, 20 choices');
+  console.log('v0.4 -> v0.5 upgrade: 2 tables, 35 columns, 25 choices');
   // 8. upgrade v0.5 -> v0.6: tracked_object (16 columns, 14 choices) + Object reference on 3 tables
   const OBJ = 'x_2160899_driftw_0_tracked_object';
   F.sys_db_object = F.sys_db_object.filter(t => t.name !== OBJ);
@@ -111,5 +111,10 @@ const after = JSON.stringify(S); o = run(false, S); assert.strictEqual(JSON.stri
   F.sys_choice = F.sys_choice.filter(c => !(c.name === OBJ && c.value === 'ignored'));
   o2 = run(true, F); assert.match(o2, /Would create: 0 role record\(s\), 0 table\(s\), 0 column\(s\), 1 choice\(s\)/);
   console.log('O01 -> O03: 1 choice');
+  // security phase 1: collection_run.run_trigger (Started by), 5 choices
+  F.sys_dictionary = F.sys_dictionary.filter(d => d.element !== 'run_trigger');
+  F.sys_choice = F.sys_choice.filter(c => c.element !== 'run_trigger');
+  o2 = run(true, F); assert.match(o2, /Would create: 0 role record\(s\), 0 table\(s\), 1 column\(s\), 6 choice\(s\)/); // + the O03 choice the step above left out
+  console.log('security phase 1: 1 column, 5 choices (+1 left from the step above)');
 }
 console.log('SCHEMA BUILDER TESTS PASSED');

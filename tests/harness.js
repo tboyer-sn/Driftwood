@@ -73,6 +73,15 @@ function makeEnv(db, props, opts) {
       db[this.t].deletes = (db[this.t].deletes || 0) + 1; return true;
     }
   }
+  // GlideRecordSecure: the table's ACLs as the test sets them – db[t].deny(row)
+  // hides a row (query/next/get), db[t].denyFields lists unreadable fields
+  // (getValue returns null). db.__secureReads counts the reads made through it.
+  class GlideRecordSecure extends GlideRecord {
+    constructor(t) { super(t); db.__secureReads = (db.__secureReads || 0) + 1; }
+    query() { super.query(); const deny = db[this.t].deny; if (deny) this.rows = this.rows.filter(r => !deny(r)); }
+    get(a, b) { const ok = super.get(a, b); const deny = db[this.t].deny; if (ok && deny && deny(this.cur)) { this.cur = null; return false; } return ok; }
+    getValue(f) { if ((db[this.t].denyFields || []).includes(f)) return null; return super.getValue(f); }
+  }
   class GlideAggregate extends GlideRecord {
     addAggregate() {} groupBy(f) { (this.gb = this.gb || []).push(f); }
     query() {
@@ -90,7 +99,7 @@ function makeEnv(db, props, opts) {
     getAggregate() { return String(this.gb ? this.groups[this.gi].n : this.rows.length); }
   }
   const ctx = {
-    GlideRecord, GlideAggregate,
+    GlideRecord, GlideRecordSecure, GlideAggregate,
     GlideDateTime: class { getValue() { return opts.javaStrings ? new JavaString('2026-10-22 12:00:00') : '2026-10-22 12:00:00'; } },
     GlideDigest: class { getSHA256Hex(s) { return crypto.createHash('sha256').update(s).digest('hex').toUpperCase(); } },
     Class: { create: () => function () { this.initialize.apply(this, arguments); } },

@@ -19,7 +19,8 @@
         response.setHeader('Cache-Control', 'no-store');
         response.setBody(res);
     } catch (e) {
+        gs.error('[Driftwood] GET /health failed: ' + String(e && e.message ? e.message : e));
         response.setStatus(500);
-        response.setBody({ error: String(e && e.message ? e.message : e) });
+        response.setBody({ error: 'Health check failed; the details are in the system log' });
     }
 })(request, response);

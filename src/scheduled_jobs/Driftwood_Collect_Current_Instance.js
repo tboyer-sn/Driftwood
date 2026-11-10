@@ -9,7 +9,7 @@
 (function () {
     var collector = new ConfigNowCollector({ incremental: true });
     var snapshot = collector.collect();
-    var result = new ConfigNowWriter().persist(snapshot);
+    var result = new ConfigNowWriter().persist(snapshot, { trigger: 'job' });
 
     gs.info('[Driftwood] Collection complete for {0} in {1} ms. totals={2} warnings={3} run={4} changes={5}',
         snapshot.instance.instance_name,

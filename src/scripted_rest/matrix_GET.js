@@ -20,13 +20,15 @@
     if (q.categories && q.categories.length) opts.categories = String(q.categories[0]).split(',');
     if (q.keys && q.keys.length && String(q.keys[0])) opts.keys = [String(q.keys[0])]; // one key: keys may contain commas
     try {
-        var result = new ConfigNowCompare().compareMany(refs, opts);
+        var result = new ConfigNowCompare({ secure: true }).compareMany(refs, opts);
         response.setStatus(200);
         response.setHeader('Cache-Control', 'no-store');
         response.setBody(result);
     } catch (e) {
         var msg = String(e && e.message ? e.message : e);
-        response.setStatus(msg.indexOf('Instance not found') == 0 || msg.indexOf('Need at least') == 0 ? 400 : 500);
-        response.setBody({ error: msg });
+        if (msg.indexOf('Instance not found') == 0 || msg.indexOf('Need at least') == 0) { response.setStatus(400); response.setBody({ error: msg }); return; }
+        gs.error('[Driftwood] GET /matrix failed: ' + msg);
+        response.setStatus(500);
+        response.setBody({ error: 'Comparison failed; the details are in the system log' });
     }
 })(request, response);

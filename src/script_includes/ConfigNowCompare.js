@@ -26,15 +26,25 @@ ConfigNowCompare.prototype = {
 
     SCHEMA: 'driftwood.compare/0.1',
 
+    /**
+     * options.secure = true: read through GlideRecordSecure (ACLs of the
+     * current user apply). Every REST resource and page uses it; only the
+     * drift engine (system job) reads without it.
+     */
     initialize: function (options) {
         this.options = options || {};
         this.config = this.options.config || ConfigNowConfig.get();
         this.T = this.config.tables;
+        this.secure = !!this.options.secure;
+    },
+
+    _gr: function (table) {
+        return ConfigNowConfig.record(table, this.secure);
     },
 
     listInstances: function () {
         var out = [];
-        var gr = new GlideRecord(this.T.instance);
+        var gr = this._gr(this.T.instance);
         if (!gr.isValid()) return out;
         gr.orderBy('instance_name');
         gr.query();
@@ -45,9 +55,9 @@ ConfigNowCompare.prototype = {
     /** ref: instance CI sys_id or instance_name. Returns info or null. */
     resolveInstance: function (ref) {
         if (!ref) return null;
-        var gr = new GlideRecord(this.T.instance);
+        var gr = this._gr(this.T.instance);
         if (gr.get(ref)) return this._instanceInfo(gr);
-        gr = new GlideRecord(this.T.instance);
+        gr = this._gr(this.T.instance);
         gr.addQuery('instance_name', ref);
         gr.setLimit(1);
         gr.query();
@@ -325,7 +335,7 @@ ConfigNowCompare.prototype = {
 
     _load: function (table, instId, cat) {
         var map = {};
-        var gr = new GlideRecord(table);
+        var gr = this._gr(table);
         if (!gr.isValid()) return map;
         gr.addQuery('instance', instId);
         gr.addQuery('item_category', cat);
@@ -402,6 +412,62 @@ ConfigNowCompare.prototype = {
         }
         for (var j = 0; j < order.length; j++) if (seen[order[j]]) out.push(order[j]);
         return out;
+    },
+
+    /**
+     * This instance's STORED observations as a snapshot (security review S1):
+     * what GET /current returns to people without configuration_admin, instead
+     * of running the collector in their session. Read through this.secure, so
+     * only rows and fields the user may read are included (secure_value_hash
+     * only with configuration_read_secure). Null when never collected.
+     */
+    storedSnapshot: function (opts) {
+        opts = opts || {};
+        var name = String(gs.getProperty('instance_name') || '');
+        var ig = this._gr(this.T.instance);
+        if (!ig.isValid()) return null;
+        ig.addQuery('instance_name', name);
+        ig.setLimit(1);
+        ig.query();
+        if (!ig.next()) return null;
+        var summary = {};
+        try { summary = JSON.parse(ig.getValue('collection_summary') || '{}'); } catch (e) { summary = {}; }
+        var snap = {
+            schema: 'driftwood.snapshot/0.1', stored: true,
+            collected_at: ig.getValue('last_collected') || '', duration_ms: 0,
+            collector_version: summary.collector_version || '', collector_scope: summary.collector_scope || '',
+            instance: { instance_name: name, instance_url: ig.getValue('instance_url') || '', family: ig.getValue('family') || '',
+                patch: ig.getValue('patch') || '', build_name: ig.getValue('build_name') || '', environment: ig.getDisplayValue('environment') || '' },
+            categories: {}, warnings: summary.warnings || []
+        };
+        var cats = opts.categories || this.config.categories || [];
+        for (var c = 0; c < cats.length; c++) {
+            var cat = cats[c], table = this.T[cat];
+            if (!table) continue;
+            var gr = this._gr(table), items = [];
+            if (!gr.isValid()) continue;
+            gr.addQuery('instance', ig.getUniqueValue());
+            gr.addQuery('item_category', cat);
+            gr.addQuery('present', true);
+            gr.query();
+            while (gr.next()) {
+                var it = { category: cat, key: gr.getValue('item_key') || '', name: gr.getValue('name') || '',
+                    value: gr.getValue('item_value') || '', version: gr.getValue('item_version') || '', state: gr.getValue('item_state') || '',
+                    attributes: this._json(gr.getValue('item_attributes')), runtime: this._json(gr.getValue('runtime')),
+                    hash: gr.getValue('value_hash') || '', source_sys_id: gr.getValue('source_sys_id') || '',
+                    source_table: gr.isValidField('source_table') ? (gr.getValue('source_table') || '') : '',
+                    secure: gr.getValue('is_secure') == '1' || gr.getValue('is_secure') == 'true' };
+                var sh = gr.getValue('secure_value_hash');
+                if (sh) it.secure_value_hash = sh;
+                items.push(it);
+            }
+            snap.categories[cat] = { count: items.length, items: items };
+        }
+        return snap;
+    },
+
+    _json: function (s) {
+        try { return JSON.parse(s || '{}'); } catch (e) { return {}; }
     },
 
     type: 'ConfigNowCompare'

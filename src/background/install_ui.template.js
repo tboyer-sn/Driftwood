@@ -249,8 +249,10 @@
         var op = OPS[o];
         if (!defId || defId == 'dry-run') { log('REST   ' + op[0] + ' ' + op[1] + '  CREATE (after the API record)'); if (DRY_RUN) n.created++; continue; }
         upsert('sys_ws_operation', { web_service_definition: defId, http_method: op[0], relative_path: op[1] }, {
-            name: op[2], operation_script: op[3], requires_authentication: 'true', active: 'true'
-        }, ['operation_script'], 'REST   ' + op[0] + ' ' + op[1]);
+            // Security review S5: the platform's REST ACL check (default ACL: internal
+            // users only) on top of each resource's own role check
+            name: op[2], operation_script: op[3], requires_authentication: 'true', requires_acl_authorization: 'true', active: 'true'
+        }, ['operation_script', 'requires_acl_authorization'], 'REST   ' + op[0] + ' ' + op[1]);
     }
     // The API was renamed: /api/<scope>/configurationnow -> /api/<scope>/driftwood.
     // The old definition is deactivated once the new one exists; a later run
@@ -400,7 +402,7 @@
     var LAYOUTS = [
         [T_OBJECT, ['name', 'item_category', 'drift_status', 'drift_kinds', 'present_count', 'instance_count', 'differs_on', 'missing_on', 'differs_on_prod', 'last_compared']],
         [T_CHANGE, ['changed_on', 'instance', 'item_category', 'item_key', 'item_name', 'change_type', 'changed_fields', 'object', 'run', 'source_url']],
-        [T_RUN, ['run_id', 'instance', 'source', 'mode', 'collected_at', 'changes_logged', 'baseline_categories', 'totals', 'warnings_count', 'snapshot_attached']],
+        [T_RUN, ['run_id', 'instance', 'source', 'run_trigger', 'mode', 'collected_at', 'changes_logged', 'baseline_categories', 'totals', 'warnings_count', 'snapshot_attached']],
         [T_PLAIN, ['instance', 'item_category', 'name', 'item_key', 'item_value', 'item_version', 'item_state', 'object', 'last_changed', 'source_url']],
         [P + 'cmdb_ci_sn_tracked_plugin', ['instance', 'name', 'item_key', 'item_version', 'item_state', 'object', 'last_changed', 'source_url']],
         [T_INSTANCE, ['name', 'environment', 'family', 'patch', 'last_collected', 'collection_status', 'node_count']]
